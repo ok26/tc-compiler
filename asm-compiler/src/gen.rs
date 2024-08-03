@@ -203,7 +203,6 @@ pub fn gen_instructions(tokens: Vec<Token>) -> Vec<u32> {
                 i += 3;
             },
             Token::Call => {
-
                 if i + 1 >= tokens.len() { panic!("Incorrect arguments") }
 
                 instructions.push((1 << 11) | (1 << 31));
@@ -228,6 +227,19 @@ pub fn gen_instructions(tokens: Vec<Token>) -> Vec<u32> {
 
                 current_op += 4;
                 i += 1;
+            },
+            Token::Jmp => {
+                if i + 1 >= tokens.len() { panic!("Incorrect arguments") }
+
+                instructions.append(&mut vec![0xC0000100, 0, 0]);
+
+                match tokens[i + 1].clone() {
+                    Token::Label(label) => { pending_jumps.push((label, current_op + 3)); instructions.push(0); }
+                    _ => panic!("Incorrect arguments")
+                }
+
+                current_op += 4;
+                i += 2;
             }
         }   
     }

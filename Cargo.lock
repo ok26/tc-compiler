@@ -3,5 +3,12 @@
 version = 3
 
 [[package]]
+name = "asm-compiler"
+version = "0.1.0"
+
+[[package]]
 name = "tc-compiler"
 version = "0.1.0"
+dependencies = [
+ "asm-compiler",
+]

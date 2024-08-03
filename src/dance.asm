@@ -10,4 +10,4 @@ loop:
     xor r4 r5 r1
     and r1 3 r2
     mov r2 io
-    jeq 0 0 loop ; Add always-jump option, very easy
+    jmp loop

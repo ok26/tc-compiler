@@ -1,10 +1,7 @@
-use tc_compiler::{
-    gen::gen_instructions,
-    lexer::tokenize,
-};
+use asm_compiler::compile_asm;
 
 fn main() {
-    let instructions = gen_instructions(tokenize(include_str!("dance.asm").to_string()));
+    let instructions = compile_asm(include_str!("dance.asm"));
     for (i, instruction) in instructions.iter().enumerate() {
         if i != 0 && i % 4 == 0 {
             println!("");
