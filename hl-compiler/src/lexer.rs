@@ -25,7 +25,6 @@ pub struct Token {
 enum LexerErrorType {
     UnevenPunctuation,
     InvalidNumber,
-    LineDoesNotTerminate,
     UnknownCharachter
 }
 
@@ -278,7 +277,6 @@ impl std::fmt::Display for LexerErrorType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let out = match self {
             LexerErrorType::InvalidNumber => "Invalid number",
-            LexerErrorType::LineDoesNotTerminate => "Line does not terminate",
             LexerErrorType::UnevenPunctuation => "Uneven punctuation",
             LexerErrorType::UnknownCharachter => "Unknown charachter"
         };
