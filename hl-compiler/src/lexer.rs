@@ -25,7 +25,8 @@ pub struct Token {
 enum LexerErrorType {
     UnevenPunctuation,
     InvalidNumber,
-    LineDoesNotTerminate
+    LineDoesNotTerminate,
+    UnknownCharachter
 }
 
 pub struct LexerError {
@@ -223,9 +224,16 @@ impl<'a> Lexer<'a> {
                 if c.is_numeric() { return self.parse_number(); }  
                 if Lexer::is_punctuation(*c) { return self.parse_punctuation(); }
                 if Lexer::is_operator(*c) {
-                    if let Some(token) = self.parse_operator() {return Ok(token); }
+                    if let Some(token) = self.parse_operator() { return Ok(token); }
                     else { continue; }
                 }
+
+                self.chars.next();
+                return Err(LexerError {
+                    ty: LexerErrorType::UnknownCharachter,
+                    row: self.row,
+                    collumn: self.collumn
+                })
             }
             else { break; }
         }
@@ -271,7 +279,8 @@ impl std::fmt::Display for LexerErrorType {
         let out = match self {
             LexerErrorType::InvalidNumber => "Invalid number",
             LexerErrorType::LineDoesNotTerminate => "Line does not terminate",
-            LexerErrorType::UnevenPunctuation => "Uneven punctuation"
+            LexerErrorType::UnevenPunctuation => "Uneven punctuation",
+            LexerErrorType::UnknownCharachter => "Unknown charachter"
         };
         write!(f, "{}", out)
     }
