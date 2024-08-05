@@ -1,3 +1,4 @@
+// Returns the n:th number in the fibonacci sequence
 fn fib(n) {
     if (n <= 1) {
         return 1;
@@ -7,7 +8,7 @@ fn fib(n) {
 
 fn main() {
     for (i = 0; i < 10; i++) {
-        let fibx = fib(i);
+        let fibx = fib(i); // Test comment
         println(fibx);
     }
 }

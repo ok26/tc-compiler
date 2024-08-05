@@ -46,7 +46,7 @@ impl<'a> Lexer<'a> {
         Lexer {
             chars: code.chars().peekable(),
             row: 1,
-            collumn: 1,
+            collumn: 0,
             current_punctuation: [0; 3]
         }
     }
@@ -55,6 +55,7 @@ impl<'a> Lexer<'a> {
         loop {
             if let Some(c) = self.chars.peek() {
                 if c.is_whitespace() {
+                    self.collumn += 1;
                     if *c == '\n' {
                         self.row += 1;
                         self.collumn = 0;
@@ -156,6 +157,7 @@ impl<'a> Lexer<'a> {
     fn parse_punctuation(&mut self) -> Result<Token, LexerError> {
         
         let c = self.chars.next().expect("Unreachable");
+        self.collumn += 1;
         if Lexer::is_seperator(c) {
             return Ok(Token {
                 ty: TokenType::Punctuation(PunctuationKind::Seperator),
@@ -190,6 +192,7 @@ impl<'a> Lexer<'a> {
 
     fn parse_operator(&mut self) -> Option<Token> {
         let mut raw = self.chars.next().expect("Always exists").to_string();
+        self.collumn += 1;
         if let Some(nxt) = self.chars.peek() {
             if Lexer::is_operator(*nxt) {
                 raw.push(*nxt);
@@ -217,14 +220,12 @@ impl<'a> Lexer<'a> {
         loop {
             if let Some(c) = self.chars.peek() {
 
-                self.collumn += 1;
-
                 if Lexer::is_identifier(*c) { return Ok(self.parse_identifier()); }
                 if c.is_numeric() { return self.parse_number(); }  
                 if Lexer::is_punctuation(*c) { return self.parse_punctuation(); }
                 if Lexer::is_operator(*c) {
                     if let Some(token) = self.parse_operator() { return Ok(token); }
-                    else { continue; }
+                    else { self.skip_whitespace(); continue; }
                 }
 
                 self.chars.next();
