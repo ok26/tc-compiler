@@ -47,12 +47,12 @@ fn main() {
         let nth_fib = fib(i);
     }
 
-    // Calculate sqrt of n with binary search
+    // Calculate sqrt of number with binary search
     let num = 765123;
     let sqrt = binary_sqrt(num);
 
 
-    // Following errors are om purpose for testing
+    // Following errors are on purpose for testing
 
     let fn = 16;
     for (i >= 12) {
