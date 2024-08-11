@@ -17,9 +17,9 @@ pub enum TokenType {
 #[derive(Clone)]
 pub struct Token {
     pub ty: TokenType,
-    raw: String,
-    row: usize,
-    collumn: usize
+    pub raw: String,
+    pub row: usize,
+    pub collumn: usize
 }
 
 enum LexerErrorType {
@@ -97,10 +97,15 @@ impl<'a> Lexer<'a> {
             _ => panic!("Unreachable")
         };
 
-        let ret = self.current_punctuation[ty];
-
-        if "([{".contains(c) { self.current_punctuation[ty] += 1; }
-        else { self.current_punctuation[ty] -= 1; }
+        let ret;
+        if "([{".contains(c) { 
+            ret = self.current_punctuation[ty]; 
+            self.current_punctuation[ty] += 1; 
+        }
+        else { 
+            self.current_punctuation[ty] -= 1;
+            ret = self.current_punctuation[ty];
+        }
 
         return ret;
     }
@@ -258,11 +263,13 @@ impl<'a> Lexer<'a> {
 impl std::fmt::Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let out = match self {
-            TokenType::EOF => "EOF",
-            TokenType::Identifier => "Identifier",
-            TokenType::Number => "Number",
-            TokenType::Operator => "Operator",
-            TokenType::Punctuation(_) => "Punctuation"
+            TokenType::EOF => "EOF".to_string(),
+            TokenType::Identifier => "Identifier".to_string(),
+            TokenType::Number => "Number".to_string(),
+            TokenType::Operator => "Operator".to_string(),
+            TokenType::Punctuation(PunctuationKind::Open(nmr)) => format!("Open({})", nmr),
+            TokenType::Punctuation(PunctuationKind::Close(nmr)) => format!("Close({})", nmr),
+            TokenType::Punctuation(PunctuationKind::Seperator) => "Seperator".to_string()
         };
         write!(f, "{}", out)
     }

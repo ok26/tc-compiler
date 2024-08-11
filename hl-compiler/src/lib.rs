@@ -3,6 +3,7 @@ mod ast;
 mod gen;
 
 use lexer::{Lexer, Token, TokenType};
+use ast::Ast;
 
 pub fn compile_hl(code: &str) -> String {
 
@@ -19,6 +20,12 @@ pub fn compile_hl(code: &str) -> String {
                 println!("{}", error);
             }
         }
+    }
+    
+    let mut ast = Ast::new(tokens);
+    let ast_tree = ast.generate_ast();
+    for node in ast_tree {
+        println!("{}", node);
     }
     code.to_string()
 }
