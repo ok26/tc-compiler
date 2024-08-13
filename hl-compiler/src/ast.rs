@@ -1,14 +1,15 @@
+use std::cmp::max;
+
 use crate::lexer::{PunctuationKind, Token, TokenType};
 
 #[derive(Clone, Debug)]
 pub enum Expression {
-    Operation {
-        left: Box<Expression>,
-        right: Box<Expression>,
-        raw: String
-    },
     Value(String),
-    Function(String, Vec<String>)
+    Function(String, Vec<String>),
+    Operator(String),
+    ParenthesisOpen(usize),
+    ParenthesisClose(usize),
+    Block(Vec<Expression>)
 }
 
 #[derive(Clone, Debug)]
@@ -16,13 +17,17 @@ pub enum AstErrorType {
     ExpectedIdentifier,
     ReservedKeyword,
     ExpectedAssignment,
-    MissingValue,
+    ExpectedValue,
     InvalidFunctionArguments,
     ExpectedOperator,
     ExpectedBody,
-    ExpectedParentheses,
+    ExpectedParenthesis,
     ExpectedIntegerOperator,
-    SyntaxError
+    SyntaxError,
+    UnevenParenthesis,
+
+    // Will be added, thrown when self.i >= self.tokens.len()
+    IncompleteLine
 }
 
 #[derive(Clone, Debug)]
@@ -159,73 +164,149 @@ impl Ast {
     }
 
     fn parse_expression(&mut self, terminators: Vec<&str>) -> Result<Expression, Node> {
-        let token = self.tokens[self.i].clone();
-        self.i += 1;
-        let mut operator = self.tokens[self.i].clone();
-        self.i += 1;
+        let mut expression_block: Vec<Expression> = vec![];
+        let mut parenthesis_number = 0;
+        let mut max_parenthesis_number = 0;
 
-        match token.ty {
-            TokenType::Number | TokenType::Identifier => {},
-            _ => return Err(Node::Error {
-                ty: AstErrorType::MissingValue,
-                row: token.row,
-                collumn: token.collumn
-            }) 
-        }
+        loop {
+            let value = self.tokens[self.i].clone();
+            self.i += 1;
+            if value.raw == "(" {
+                max_parenthesis_number = max(max_parenthesis_number, parenthesis_number);
+                expression_block.push(Expression::ParenthesisOpen(parenthesis_number));
+                parenthesis_number += 1;
+                continue;
+            }
 
-        if Ast::is_reserved_keyword(&token.raw) {
-            return Err(Node::Error {
-                ty: AstErrorType::ReservedKeyword,
-                row: token.row,
-                collumn: token.collumn
-            })
-        }
+            if value.ty != TokenType::Identifier && value.ty != TokenType::Number {
+                return Err(Node::Error {
+                    ty: AstErrorType::ExpectedValue,
+                    row: value.row,
+                    collumn: value.collumn
+                })
+            }
 
-        let left_value;
-        if operator.raw == "(" {
-            if let Some(arguments) = self.parse_function_arguments() {
-                left_value = Expression::Function(token.raw.clone(), arguments);
+            let mut operator = self.tokens[self.i].clone();
+            self.i += 1;
+
+            // Function
+            if operator.raw == "(" {
+
+                // Numbers not allowed as function names
+                if operator.ty == TokenType::Number {
+                    return Err(Node::Error {
+                        ty: AstErrorType::ExpectedIdentifier,
+                        row: value.row,
+                        collumn: value.collumn
+                    })
+                }
+
+                if let Some(arguments) = self.parse_function_arguments() {
+                    expression_block.push(Expression::Function(value.raw, arguments));
+                    operator = self.tokens[self.i].clone();
+                    self.i += 1;
+                }
+                else {
+                    return Err(Node::Error {
+                        ty: AstErrorType::InvalidFunctionArguments,
+                        row: operator.row,
+                        collumn: operator.collumn
+                    })
+                }
+            }
+            else {
+                expression_block.push(Expression::Value(value.raw));
+            }
+
+            while operator.raw == ")" {
+
+                if terminators.contains(&operator.raw.as_str()) && (operator.raw != ")" || parenthesis_number == 0) { break; }
+
+                if parenthesis_number == 0 {
+                    println!("{}, {}", terminators[0], parenthesis_number);
+                    return Err(Node::Error {
+                        ty: AstErrorType::UnevenParenthesis,
+                        row: operator.row,
+                        collumn: operator.collumn
+                    })
+                }
+
+                parenthesis_number -= 1;
+                expression_block.push(Expression::ParenthesisClose(parenthesis_number));
                 operator = self.tokens[self.i].clone();
                 self.i += 1;
             }
-            else {
+
+            if terminators.contains(&operator.raw.as_str()) && (operator.raw != ")" || parenthesis_number == 0) { break; }
+
+            if operator.ty != TokenType::Operator {
                 return Err(Node::Error {
-                    ty: AstErrorType::InvalidFunctionArguments,
+                    ty: AstErrorType::ExpectedOperator,
                     row: operator.row,
                     collumn: operator.collumn
                 })
             }
-        }
-        else { left_value = Expression::Value(token.raw.clone()); }
 
-        if terminators.contains(&operator.raw.as_str()) {
-            return Ok(left_value);
+            if !Ast::is_int_operator(&operator.raw) {
+                return Err(Node::Error {
+                    ty: AstErrorType::ExpectedIntegerOperator,
+                    row: operator.row,
+                    collumn: operator.collumn
+                })
+            }
+
+            expression_block.push(Expression::Operator(operator.raw));
+
         }
 
-        if operator.ty != TokenType::Operator {
+        if parenthesis_number != 0 {
+            println!("{}", parenthesis_number);
             return Err(Node::Error {
-                ty: AstErrorType::ExpectedOperator,
-                row: operator.row,
-                collumn: operator.collumn
+                ty: AstErrorType::UnevenParenthesis,
+                row: self.tokens[self.i - 1].row,
+                collumn: self.tokens[self.i - 1].collumn
             })
         }
 
-        if !Ast::is_int_operator(&operator.raw) {
-            return Err(Node::Error {
-                ty: AstErrorType::ExpectedIntegerOperator,
-                row: operator.row,
-                collumn: operator.collumn
-            })
+        let mut parenthesis_number = max_parenthesis_number;
+        loop {
+            let mut new_block: Vec<Expression> = vec![];
+            let mut i = 0;
+            while i < expression_block.len() {
+                let expression = &expression_block[i];
+
+                if let Expression::ParenthesisOpen(number) = expression {
+
+                    if *number != parenthesis_number {
+                        new_block.push(expression.clone());
+                        i = i + 1;
+                        continue;
+                    }
+
+                    // Compress expression block
+                    let mut compressed_block: Vec<Expression> = vec![];
+                    i = i + 1;
+                    loop {
+                        let expression = &expression_block[i];
+                        if let Expression::ParenthesisClose(number) = expression { if *number == parenthesis_number { break; } }
+                        compressed_block.push(expression.clone());
+                        i = i + 1;
+                    }
+                    new_block.push(Expression::Block(compressed_block));
+                }
+                else { new_block.push(expression.clone()); }
+
+                i = i + 1;
+            }
+            expression_block = new_block;
+
+            if parenthesis_number == 0 { break; }
+            parenthesis_number -= 1;
         }
 
-        match self.parse_expression(terminators) {
-            Ok(expression) => return Ok(Expression::Operation {
-                left: Box::new(left_value),
-                right: Box::new(expression),
-                raw: operator.raw.clone()
-            }),
-            Err(error) => return Err(error)
-        }
+        // Easy to add more hierarchy for operations and not just parenthesis in future
+
+        Ok(Expression::Block(expression_block))
     }
 
     fn parse_boolean_expression(&mut self, terminator: &str) -> Result<Expression, Node> {
@@ -233,11 +314,9 @@ impl Ast {
             Ok(left_expression) => {
                 let boolean_operator = self.tokens[self.i - 1].clone();
                 match self.parse_expression(vec![terminator]) {
-                    Ok(right_expression) => return Ok(Expression::Operation {
-                        left: Box::new(left_expression),
-                        right: Box::new(right_expression),
-                        raw: boolean_operator.raw
-                    }),
+                    Ok(right_expression) => return Ok(Expression::Block (
+                        vec![left_expression, Expression::Operator(boolean_operator.raw), right_expression]
+                    )),
                     Err(error) => return Err(error)
                 }
             },
@@ -328,7 +407,7 @@ impl Ast {
         self.i += 1;
         if token.raw != "(" {
             return Node::Error {
-                ty: AstErrorType::ExpectedParentheses,
+                ty: AstErrorType::ExpectedParenthesis,
                 row: token.row,
                 collumn: token.collumn
             }
@@ -390,7 +469,7 @@ impl Ast {
         self.i += 1;
         if token.raw != "(" {
             return Node::Error {
-                ty: AstErrorType::ExpectedParentheses,
+                ty: AstErrorType::ExpectedParenthesis,
                 row: token.row,
                 collumn: token.collumn
             }
@@ -426,7 +505,7 @@ impl Ast {
         self.i += 1;
         if token.raw != "(" {
             return Node::Error {
-                ty: AstErrorType::ExpectedParentheses,
+                ty: AstErrorType::ExpectedParenthesis,
                 row: token.row,
                 collumn: token.collumn
             }
@@ -549,18 +628,27 @@ impl Ast {
 
 fn convert_expression_to_string(expression: &Expression) -> String {
     return match expression {
-        Expression::Value(value) => value.clone(),
+        Expression::Value(value) => format!("{} ", value.clone()),
         Expression::Function(identifier, arguments) => {
 
             let mut out = format!("{}(", identifier);
             for (i, argument) in arguments.iter().enumerate() {
 
                 if i != arguments.len() - 1 { out.push_str(format!("{}, ", argument).as_str()); }
-                else { out.push_str(format!("{})", argument).as_str()); }
+                else { out.push_str(format!("{}) ", argument).as_str()); }
             }
             out
         },
-        Expression::Operation { left, right, raw } => format!("{} {} {}", left, raw, right)
+        Expression::Operator ( operator ) => format!("{} ", operator.clone()),
+        Expression::Block(block) => {
+            let mut out = String::new();
+            for expression in block {
+                out.push_str(&convert_expression_to_string(expression).as_str());
+            }
+            out
+        },
+        Expression::ParenthesisOpen(_) => panic!("Unreachable"),
+        Expression::ParenthesisClose(_) => panic!("Unreachable")
     }
 }
 
@@ -578,11 +666,13 @@ impl std::fmt::Display for AstErrorType {
             AstErrorType::ExpectedIdentifier => "Expected Identifier",
             AstErrorType::ExpectedIntegerOperator => "Expected Integer Operation",
             AstErrorType::ExpectedOperator => "Expected Operator",
-            AstErrorType::ExpectedParentheses => "Expected Parentheses",
+            AstErrorType::ExpectedParenthesis => "Expected Parenthesis",
             AstErrorType::InvalidFunctionArguments => "Invalid Function Arguments",
-            AstErrorType::MissingValue => "Missing Value",
+            AstErrorType::ExpectedValue => "Expected Value",
             AstErrorType::ReservedKeyword => "Reserved Keyword",
-            AstErrorType::SyntaxError => "Syntax Error"
+            AstErrorType::SyntaxError => "Syntax Error",
+            AstErrorType::IncompleteLine => "Incomplete Line",
+            AstErrorType::UnevenParenthesis => "Uneven Parenthesis"
         };
         write!(f, "{}", out)
     }

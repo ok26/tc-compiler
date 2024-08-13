@@ -20,6 +20,10 @@ impl Gen {
 
     // Parses expression and puts final value in r5
     fn parse_expression(&self, expression: Expression) -> String {
+
+        
+
+        /*  
         match expression {
             Expression::Value(value) => {
                 if value.chars().nth(0).expect("Unreachable").is_numeric() {
@@ -54,6 +58,8 @@ impl Gen {
                 return format!("{}mov r5 r2\n{}{} r2 r5 r5\n", self.parse_expression(*right), self.parse_expression(*left), operator);
             }
         }
+        */
+        String::new()
     }
 
     fn parse_variable_assignment(&mut self, identifier: &String, value: &Expression) -> String {

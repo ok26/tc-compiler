@@ -1,8 +1,0 @@
-let smart = 15 + 12 - 8 + 2;
-let var = 15 + 2 << 4;
-let smart2 = 3 - 2 + smart;
-smart = smart2 + smart2 - var & 12;
-let test = 1 - 2 - 3 - 4;
-
-// r2 10
-// r5 12

@@ -22,14 +22,16 @@ pub struct Token {
     pub collumn: usize
 }
 
-enum LexerErrorType {
+#[derive(PartialEq, Eq)]
+pub enum LexerErrorType {
     UnevenPunctuation,
+    UnevenFilePunctuation,
     InvalidNumber,
     UnknownCharachter
 }
 
 pub struct LexerError {
-    ty: LexerErrorType,
+    pub ty: LexerErrorType,
     row: usize,
     collumn: usize
 }
@@ -38,7 +40,7 @@ pub struct Lexer<'a> {
     chars: std::iter::Peekable<std::str::Chars<'a>>,
     row: usize,
     collumn: usize,
-    current_punctuation: [isize; 3] // [Parentheses, Brackets, Curly Brackets]
+    current_punctuation: [isize; 3] // [Parenthesis, Brackets, Curly Brackets]
 }
 
 impl<'a> Lexer<'a> {
@@ -87,7 +89,7 @@ impl<'a> Lexer<'a> {
 
     fn is_punctuation(c: char)      -> bool { "(){}[],;".contains(c) }
     fn is_seperator(c: char)        -> bool { ",;".contains(c) }
-    fn is_operator(c: char)         -> bool { "+=-*/><!&|".contains(c) }
+    fn is_operator(c: char)         -> bool { "+=-*/><!&|^".contains(c) }
 
     fn update_punctuation(&mut self, c: char) -> isize {
         let ty = match c {
@@ -245,7 +247,7 @@ impl<'a> Lexer<'a> {
 
         if self.current_punctuation[0] != 0 || self.current_punctuation[1] != 0 || self.current_punctuation[2] != 0 {
             return Err(LexerError {
-                ty: LexerErrorType::UnevenPunctuation,
+                ty: LexerErrorType::UnevenFilePunctuation,
                 row: self.row,
                 collumn: self.collumn
             })
@@ -286,7 +288,8 @@ impl std::fmt::Display for LexerErrorType {
         let out = match self {
             LexerErrorType::InvalidNumber => "Invalid number",
             LexerErrorType::UnevenPunctuation => "Uneven punctuation",
-            LexerErrorType::UnknownCharachter => "Unknown charachter"
+            LexerErrorType::UnknownCharachter => "Unknown charachter",
+            LexerErrorType::UnevenFilePunctuation => "Uneven Punctuation in File"
         };
         write!(f, "{}", out)
     }
