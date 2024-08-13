@@ -39,13 +39,13 @@
 
 use std::collections::HashMap;
 
-use crate::lexer::Token;
+use crate::lexer::{Token, TokenType};
 
 fn parse_argument(token: &Token, current_inst: &mut u32, shift: u8) -> u32 {
-    match token { 
-        Token::Reg(nmr) => *nmr,
-        Token::Value(value) => { *current_inst |= 1 << shift; return *value as u32 }
-        _ => panic!("Incorrect arguments")
+    match token.ty { 
+        TokenType::Reg(nmr) => nmr,
+        TokenType::Value(value) => { *current_inst |= 1 << shift; return value as u32 }
+        _ => panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column)
     }
 }
 
@@ -65,30 +65,30 @@ pub fn gen_instructions(tokens: Vec<Token>) -> Vec<u32> {
     while i < tokens.len() {
         let token = &tokens[i];
 
-        match token {
-            Token::Label(label) => { label_locations.insert(label.clone(), current_op); i += 1; },
-            Token::Reg(_) | Token::Value(_) => panic!("Incorrect arguments"),
+        match &token.ty {
+            TokenType::Label(label) => { label_locations.insert(label.clone(), current_op); i += 1; },
+            TokenType::Reg(_) | TokenType::Value(_) => panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column),
 
-            Token::Add | Token::Sub | Token::And | Token::Or | Token::Xor | Token::Shl | Token::Shr |
-            Token::Eq | Token::NotEq | Token::Less | Token::LessEq | Token::Greater | Token::GreaterEq |
-            Token::Jeq | Token::Jneq | Token::Jl | Token::Jg | Token::Jge | Token::Jle => {
+            TokenType::Add | TokenType::Sub | TokenType::And | TokenType::Or | TokenType::Xor | TokenType::Shl | TokenType::Shr |
+            TokenType::Eq | TokenType::NotEq | TokenType::Less | TokenType::LessEq | TokenType::Greater | TokenType::GreaterEq |
+            TokenType::Jeq | TokenType::Jneq | TokenType::Jl | TokenType::Jg | TokenType::Jge | TokenType::Jle => {
 
-                if i + 3 >= tokens.len() { panic!("Incorrect arguments") }
+                if i + 3 >= tokens.len() { panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column) }
                 
-                let mut current_inst: u32 = match token {
-                    Token::Add => 0,
-                    Token:: Sub => 1,
-                    Token::And => 2,
-                    Token::Or => 3,
-                    Token::Xor => 5,
-                    Token::Shl => 6,
-                    Token::Shr => 7,
-                    Token::Eq | Token::Jeq => 1 << 8,
-                    Token::NotEq | Token::Jneq => (1 << 8) + 1,
-                    Token::Less | Token::Jl => (1 << 8) + 2,
-                    Token::LessEq | Token::Jle => (1 << 8) + 3,
-                    Token::Greater | Token::Jg => (1 << 8) + 4,
-                    Token::GreaterEq | Token::Jge => (1 << 8) + 5,
+                let mut current_inst: u32 = match token.ty {
+                    TokenType::Add => 0,
+                    TokenType::Sub => 1,
+                    TokenType::And => 2,
+                    TokenType::Or => 3,
+                    TokenType::Xor => 5,
+                    TokenType::Shl => 6,
+                    TokenType::Shr => 7,
+                    TokenType::Eq | TokenType::Jeq => 1 << 8,
+                    TokenType::NotEq | TokenType::Jneq => (1 << 8) + 1,
+                    TokenType::Less | TokenType::Jl => (1 << 8) + 2,
+                    TokenType::LessEq | TokenType::Jle => (1 << 8) + 3,
+                    TokenType::Greater | TokenType::Jg => (1 << 8) + 4,
+                    TokenType::GreaterEq | TokenType::Jge => (1 << 8) + 5,
                     _ => panic!("Unreachable")
                 };
 
@@ -108,27 +108,27 @@ pub fn gen_instructions(tokens: Vec<Token>) -> Vec<u32> {
                 // Jeq 0 0 current_op + 8
                 // Add 1 0 rx
                 
-                match token {
-                    Token::Jeq | Token::Jneq | Token::Jl | Token::Jg | Token::Jge | Token::Jle => {
-                        match tokens[i + 3].clone() {
-                            Token::Label(label) => { pending_jumps.push((label, current_op + 3)); instructions.push(0); }
-                            _ => panic!("Incorrect arguments")
+                match token.ty {
+                    TokenType::Jeq | TokenType::Jneq | TokenType::Jl | TokenType::Jg | TokenType::Jge | TokenType::Jle => {
+                        match tokens[i + 3].clone().ty {
+                            TokenType::Label(label) => { pending_jumps.push((label, current_op + 3)); instructions.push(0); }
+                            _ => panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column)
                         }
                     },
-                    Token::Eq | Token::NotEq | Token::Less | Token::LessEq | Token::Greater | Token::GreaterEq => {
+                    TokenType::Eq | TokenType::NotEq | TokenType::Less | TokenType::LessEq | TokenType::Greater | TokenType::GreaterEq => {
                         instructions.push(current_op + 12);
-                        match tokens[i + 3] {
-                            Token::Reg(nmr) => {
+                        match tokens[i + 3].ty {
+                            TokenType::Reg(nmr) => {
                                 instructions.append(&mut vec![0xC0000000, 0, 0, nmr, 0xC0000100, 0, 0, current_op + 16, 0xC0000000, 1, 0, nmr]);
                                 current_op += 12;
                             }
-                            _ => panic!("Incorrect arguments")
+                            _ => panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column)
                         }
                     },
                     _ => {
-                        match tokens[i + 3] {
-                            Token::Reg(nmr) => { instructions.push(nmr); }
-                            _ => panic!("Incorrect arguments")
+                        match tokens[i + 3].ty {
+                            TokenType::Reg(nmr) => { instructions.push(nmr); }
+                            _ => panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column)
                         }
                     }
                 }
@@ -136,31 +136,31 @@ pub fn gen_instructions(tokens: Vec<Token>) -> Vec<u32> {
                 current_op += 4;
                 i += 4;
             },
-            Token::Sram | Token::Lram | Token::Push | Token::Pop => {
+            TokenType::Sram | TokenType::Lram | TokenType::Push | TokenType::Pop => {
 
-                if i + 1 >= tokens.len() { panic!("Incorrect arguments") }
+                if i + 1 >= tokens.len() { panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column) }
 
-                let mut current_inst = match token {
-                    Token::Sram => 1 << 9,
-                    Token::Lram => (1 << 9) + 1,
-                    Token::Push => 1 << 10,
-                    Token::Pop => (1 << 10) + 1,
+                let mut current_inst = match token.ty {
+                    TokenType::Sram => 1 << 9,
+                    TokenType::Lram => (1 << 9) + 1,
+                    TokenType::Push => 1 << 10,
+                    TokenType::Pop => (1 << 10) + 1,
                     _ => panic!("Unreachable")
                 };
 
-                match token {
-                    Token::Sram | Token::Push => {
+                match token.ty {
+                    TokenType::Sram | TokenType::Push => {
                         let arg1 = parse_argument(&tokens[i + 1], &mut current_inst, 31);
                         instructions.push(current_inst);
                         instructions.push(arg1);
                         add_dummy_instruction(&mut instructions, 2);
                     },
-                    Token::Lram | Token::Pop => {
+                    TokenType::Lram | TokenType::Pop => {
                         instructions.push(current_inst);
                         add_dummy_instruction(&mut instructions, 2);
-                        match tokens[i + 1] {
-                            Token::Reg(nmr) => { instructions.push(nmr); }
-                            _ => panic!("Incorrect arguments")
+                        match tokens[i + 1].ty {
+                            TokenType::Reg(nmr) => { instructions.push(nmr); }
+                            _ => panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column)
                         }
                     }
                     _ => panic!("Unreachable")
@@ -169,15 +169,15 @@ pub fn gen_instructions(tokens: Vec<Token>) -> Vec<u32> {
                 current_op += 4;
                 i += 2;
             },
-            Token::Jt | Token::Jf | Token::Not | Token::Mov => {
+            TokenType::Jt | TokenType::Jf | TokenType::Not | TokenType::Mov => {
 
-                if i + 2 >= tokens.len() { panic!("Incorrect arguments") }
+                if i + 2 >= tokens.len() { panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column) }
 
-                let mut current_inst = match token {
-                    Token::Jf => 1 << 8,
-                    Token::Jt => (1 << 8) + 1,
-                    Token::Not => 4,
-                    Token::Mov => 0,
+                let mut current_inst = match token.ty {
+                    TokenType::Jf => 1 << 8,
+                    TokenType::Jt => (1 << 8) + 1,
+                    TokenType::Not => 4,
+                    TokenType::Mov => 0,
                     _ => panic!("Unreachable")
                 };
 
@@ -187,14 +187,14 @@ pub fn gen_instructions(tokens: Vec<Token>) -> Vec<u32> {
                 instructions.push(arg);
                 instructions.push(0);
 
-                match token {
-                    Token::Jf | Token::Jt => match tokens[i + 2].clone() {
-                        Token::Label(label) => { pending_jumps.push((label, current_op + 3)); instructions.push(0); }
-                        _ => panic!("Incorrect arguments")
+                match token.ty {
+                    TokenType::Jf | TokenType::Jt => match tokens[i + 2].clone().ty {
+                        TokenType::Label(label) => { pending_jumps.push((label, current_op + 3)); instructions.push(0); }
+                        _ => panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column)
                     },
-                    Token::Not | Token::Mov => match tokens[i + 2] {
-                        Token::Reg(nmr) => { instructions.push(nmr); }
-                        _ => panic!("Incorrect arguments")
+                    TokenType::Not | TokenType::Mov => match tokens[i + 2].ty {
+                        TokenType::Reg(nmr) => { instructions.push(nmr); }
+                        _ => panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column)
                     }
                     _ => panic!("Unreachable")
                 }
@@ -202,40 +202,40 @@ pub fn gen_instructions(tokens: Vec<Token>) -> Vec<u32> {
                 current_op += 4;
                 i += 3;
             },
-            Token::Call => {
-                if i + 1 >= tokens.len() { panic!("Incorrect arguments") }
+            TokenType::Call => {
+                if i + 1 >= tokens.len() { panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column) }
 
                 instructions.push((1 << 11) | (1 << 31));
-                match tokens[i + 1].clone() {
-                    Token::Label(label) => { pending_jumps.push((label, current_op + 1)); instructions.push(0); }
-                    _ => panic!("Incorrect arguments")
+                match tokens[i + 1].clone().ty {
+                    TokenType::Label(label) => { pending_jumps.push((label, current_op + 1)); instructions.push(0); }
+                    _ => panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column)
                 }
                 add_dummy_instruction(&mut instructions, 2);
 
                 current_op += 4;
                 i += 2;
             },
-            Token::Return => {
+            TokenType::Return => {
                 instructions.push((1 << 11) + 1);
                 add_dummy_instruction(&mut instructions, 3);
 
                 current_op += 4;
                 i += 1;
             },
-            Token::Halt => {
+            TokenType::Halt => {
                 instructions.append(&mut vec![1 << 8, 0, 0, current_op]);
 
                 current_op += 4;
                 i += 1;
             },
-            Token::Jmp => {
-                if i + 1 >= tokens.len() { panic!("Incorrect arguments") }
+            TokenType::Jmp => {
+                if i + 1 >= tokens.len() { panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column) }
 
                 instructions.append(&mut vec![0xC0000100, 0, 0]);
 
-                match tokens[i + 1].clone() {
-                    Token::Label(label) => { pending_jumps.push((label, current_op + 3)); instructions.push(0); }
-                    _ => panic!("Incorrect arguments")
+                match tokens[i + 1].clone().ty {
+                    TokenType::Label(label) => { pending_jumps.push((label, current_op + 3)); instructions.push(0); }
+                    _ => panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column)
                 }
 
                 current_op += 4;

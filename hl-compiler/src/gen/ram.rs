@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env::var};
+use std::collections::HashMap;
 
 pub struct Ram {
     variables: HashMap<String, usize>,
@@ -31,6 +31,7 @@ impl Ram {
                 return i;
             }
         }
+        println!("DEBUG: Ram is full!\n");
         return 0;
     }
 

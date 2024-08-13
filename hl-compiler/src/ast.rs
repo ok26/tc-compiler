@@ -66,7 +66,7 @@ pub enum Node {
     Error {
         ty: AstErrorType,
         row: usize,
-        collumn: usize
+        column: usize
     }
 }
 
@@ -111,7 +111,7 @@ impl Ast {
             return Node::Error {
                 ty: AstErrorType::ExpectedIdentifier,
                 row: token.row,
-                collumn: token.collumn
+                column: token.column
             };
         }
 
@@ -119,7 +119,7 @@ impl Ast {
             return Node::Error {
                 ty: AstErrorType::ReservedKeyword,
                 row: token.row,
-                collumn: token.collumn
+                column: token.column
             };
         }
 
@@ -131,7 +131,7 @@ impl Ast {
             return Node::Error {
                 ty: AstErrorType::ExpectedAssignment,
                 row: token.row,
-                collumn: token.collumn
+                column: token.column
             };
         }
 
@@ -182,7 +182,7 @@ impl Ast {
                 return Err(Node::Error {
                     ty: AstErrorType::ExpectedValue,
                     row: value.row,
-                    collumn: value.collumn
+                    column: value.column
                 })
             }
 
@@ -197,7 +197,7 @@ impl Ast {
                     return Err(Node::Error {
                         ty: AstErrorType::ExpectedIdentifier,
                         row: value.row,
-                        collumn: value.collumn
+                        column: value.column
                     })
                 }
 
@@ -210,7 +210,7 @@ impl Ast {
                     return Err(Node::Error {
                         ty: AstErrorType::InvalidFunctionArguments,
                         row: operator.row,
-                        collumn: operator.collumn
+                        column: operator.column
                     })
                 }
             }
@@ -227,7 +227,7 @@ impl Ast {
                     return Err(Node::Error {
                         ty: AstErrorType::UnevenParenthesis,
                         row: operator.row,
-                        collumn: operator.collumn
+                        column: operator.column
                     })
                 }
 
@@ -243,7 +243,7 @@ impl Ast {
                 return Err(Node::Error {
                     ty: AstErrorType::ExpectedOperator,
                     row: operator.row,
-                    collumn: operator.collumn
+                    column: operator.column
                 })
             }
 
@@ -251,7 +251,7 @@ impl Ast {
                 return Err(Node::Error {
                     ty: AstErrorType::ExpectedIntegerOperator,
                     row: operator.row,
-                    collumn: operator.collumn
+                    column: operator.column
                 })
             }
 
@@ -264,7 +264,7 @@ impl Ast {
             return Err(Node::Error {
                 ty: AstErrorType::UnevenParenthesis,
                 row: self.tokens[self.i - 1].row,
-                collumn: self.tokens[self.i - 1].collumn
+                column: self.tokens[self.i - 1].column
             })
         }
 
@@ -332,7 +332,7 @@ impl Ast {
             return Node::Error {
                 ty: AstErrorType::ExpectedIdentifier,
                 row: token.row,
-                collumn: token.collumn
+                column: token.column
             }
         }
 
@@ -342,7 +342,7 @@ impl Ast {
             return Node::Error {
                 ty: AstErrorType::InvalidFunctionArguments,
                 row: seperator.row,
-                collumn: seperator.collumn
+                column: seperator.column
             }
         }
 
@@ -364,14 +364,14 @@ impl Ast {
             return Node::Error {
                 ty: AstErrorType::ExpectedBody,
                 row: body_open.row,
-                collumn: body_open.collumn
+                column: body_open.column
             }
         }
         else {
             return Node::Error {
                 ty: AstErrorType::InvalidFunctionArguments,
                 row: seperator.row,
-                collumn: seperator.collumn
+                column: seperator.column
             }
         }
     }
@@ -409,7 +409,7 @@ impl Ast {
             return Node::Error {
                 ty: AstErrorType::ExpectedParenthesis,
                 row: token.row,
-                collumn: token.collumn
+                column: token.column
             }
         }
 
@@ -443,7 +443,7 @@ impl Ast {
                             return Node::Error {
                                 ty: AstErrorType::ExpectedBody,
                                 row: body_open.row,
-                                collumn: body_open.collumn
+                                column: body_open.column
                             }
                         }
 
@@ -457,7 +457,7 @@ impl Ast {
                 return Node::Error {
                     ty: AstErrorType::ExpectedBody,
                     row: body_open.row,
-                    collumn: body_open.collumn
+                    column: body_open.column
                 };
             },
             Err(error) => return error
@@ -471,7 +471,7 @@ impl Ast {
             return Node::Error {
                 ty: AstErrorType::ExpectedParenthesis,
                 row: token.row,
-                collumn: token.collumn
+                column: token.column
             }
         }
 
@@ -492,7 +492,7 @@ impl Ast {
                 return Node::Error {
                     ty: AstErrorType::ExpectedBody,
                     row: body_open.row,
-                    collumn: body_open.collumn
+                    column: body_open.column
                 }
             },
             Err(error) => return error
@@ -507,7 +507,7 @@ impl Ast {
             return Node::Error {
                 ty: AstErrorType::ExpectedParenthesis,
                 row: token.row,
-                collumn: token.collumn
+                column: token.column
             }
         }
 
@@ -527,7 +527,7 @@ impl Ast {
             return Node::Error {
                 ty: AstErrorType::SyntaxError,
                 row: token.row,
-                collumn: token.collumn
+                column: token.column
             }
         }
 
@@ -577,7 +577,7 @@ impl Ast {
         return Node::Error {
             ty: AstErrorType::ExpectedBody,
             row: body_open.row,
-            collumn: body_open.collumn
+            column: body_open.column
         }
     }
 
@@ -591,7 +591,7 @@ impl Ast {
             return Some(Node::Error {
                 ty: AstErrorType::ExpectedIdentifier,
                 row: token.row,
-                collumn: token.collumn
+                column: token.column
             });
         }
 
@@ -647,8 +647,7 @@ fn convert_expression_to_string(expression: &Expression) -> String {
             }
             out
         },
-        Expression::ParenthesisOpen(_) => panic!("Unreachable"),
-        Expression::ParenthesisClose(_) => panic!("Unreachable")
+        Expression::ParenthesisOpen(_) | Expression::ParenthesisClose(_) => panic!("Unreachable"),
     }
 }
 
@@ -681,7 +680,7 @@ impl std::fmt::Display for AstErrorType {
 fn convert_node_to_string(node: &Node, inc: usize) -> String {
     return match node {
         Node::VariableAssignment { identifier, value } => format!("{}Variable assignment: {} = {}\n", "\t".to_string().repeat(inc), identifier, value),
-        Node::Error { ty, row, collumn } => format!("{}Error: {} on line {}, collumn: {}\n", "\t".to_string().repeat(inc), ty, row, collumn),
+        Node::Error { ty, row, column } => format!("{}Error: {} on line {}, column: {}\n", "\t".to_string().repeat(inc), ty, row, column),
         Node::Return { value } => {
             if let Some(value) = value { format!("{}Return {}\n", "\t".to_string().repeat(inc), value) }
             else { format!("{}Return\n", "\t".to_string().repeat(inc)) }

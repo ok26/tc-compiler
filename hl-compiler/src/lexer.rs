@@ -19,7 +19,7 @@ pub struct Token {
     pub ty: TokenType,
     pub raw: String,
     pub row: usize,
-    pub collumn: usize
+    pub column: usize
 }
 
 #[derive(PartialEq, Eq)]
@@ -33,13 +33,13 @@ pub enum LexerErrorType {
 pub struct LexerError {
     pub ty: LexerErrorType,
     row: usize,
-    collumn: usize
+    column: usize
 }
 
 pub struct Lexer<'a> {
     chars: std::iter::Peekable<std::str::Chars<'a>>,
     row: usize,
-    collumn: usize,
+    column: usize,
     current_punctuation: [isize; 3] // [Parenthesis, Brackets, Curly Brackets]
 }
 
@@ -48,7 +48,7 @@ impl<'a> Lexer<'a> {
         Lexer {
             chars: code.chars().peekable(),
             row: 1,
-            collumn: 0,
+            column: 0,
             current_punctuation: [0; 3]
         }
     }
@@ -57,10 +57,10 @@ impl<'a> Lexer<'a> {
         loop {
             if let Some(c) = self.chars.peek() {
                 if c.is_whitespace() {
-                    self.collumn += 1;
+                    self.column += 1;
                     if *c == '\n' {
                         self.row += 1;
-                        self.collumn = 0;
+                        self.column = 0;
                     }
                     self.chars.next();
                 }
@@ -119,7 +119,7 @@ impl<'a> Lexer<'a> {
                 if Lexer::is_identifier(*c) || (raw.len() > 0 && c.is_numeric()) {
                     raw.push(*c);
                     self.chars.next();
-                    self.collumn += 1;
+                    self.column += 1;
                 }
                 else { break; }
             }
@@ -129,7 +129,7 @@ impl<'a> Lexer<'a> {
             ty: TokenType::Identifier,
             raw: raw,
             row: self.row,
-            collumn: self.collumn
+            column: self.column
         }
     }
 
@@ -140,13 +140,13 @@ impl<'a> Lexer<'a> {
                 if c.is_numeric() {
                     raw.push(*c);
                     self.chars.next();
-                    self.collumn += 1;
+                    self.column += 1;
                 }
                 else if Lexer::is_identifier(*c) {
                     return Err(LexerError {
                         ty: LexerErrorType::InvalidNumber,
                         row: self.row,
-                        collumn: self.collumn
+                        column: self.column
                     })
                }
                 else { break; }
@@ -157,20 +157,20 @@ impl<'a> Lexer<'a> {
             ty: TokenType::Number,
             raw: raw,
             row: self.row,
-            collumn: self.collumn
+            column: self.column
         })
     }
 
     fn parse_punctuation(&mut self) -> Result<Token, LexerError> {
         
         let c = self.chars.next().expect("Unreachable");
-        self.collumn += 1;
+        self.column += 1;
         if Lexer::is_seperator(c) {
             return Ok(Token {
                 ty: TokenType::Punctuation(PunctuationKind::Seperator),
                 raw: c.to_string(),
                 row: self.row,
-                collumn: self.collumn
+                column: self.column
             })
         }
 
@@ -179,7 +179,7 @@ impl<'a> Lexer<'a> {
             return Err(LexerError {
                 ty: LexerErrorType::UnevenPunctuation,
                 row: self.row,
-                collumn: self.collumn
+                column: self.column
             });
         }
 
@@ -193,18 +193,18 @@ impl<'a> Lexer<'a> {
             ty: ty,
             raw: c.to_string(),
             row: self.row,
-            collumn: self.collumn
+            column: self.column
         });
     }
 
     fn parse_operator(&mut self) -> Option<Token> {
         let mut raw = self.chars.next().expect("Always exists").to_string();
-        self.collumn += 1;
+        self.column += 1;
         if let Some(nxt) = self.chars.peek() {
             if Lexer::is_operator(*nxt) {
                 raw.push(*nxt);
                 self.chars.next();
-                self.collumn += 1;
+                self.column += 1;
             }
         }
 
@@ -216,7 +216,7 @@ impl<'a> Lexer<'a> {
             ty: TokenType::Operator,
             raw: raw,
             row: self.row,
-            collumn: self.collumn
+            column: self.column
         })
     }
 
@@ -239,7 +239,7 @@ impl<'a> Lexer<'a> {
                 return Err(LexerError {
                     ty: LexerErrorType::UnknownCharachter,
                     row: self.row,
-                    collumn: self.collumn
+                    column: self.column
                 })
             }
             else { break; }
@@ -249,7 +249,7 @@ impl<'a> Lexer<'a> {
             return Err(LexerError {
                 ty: LexerErrorType::UnevenFilePunctuation,
                 row: self.row,
-                collumn: self.collumn
+                column: self.column
             })
         }
 
@@ -257,7 +257,7 @@ impl<'a> Lexer<'a> {
             ty: TokenType::EOF,
             raw: String::new(),
             row: self.row,
-            collumn: self.collumn
+            column: self.column
         })
     }
 }
@@ -279,7 +279,7 @@ impl std::fmt::Display for TokenType {
 
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Token ( Type: {}, Raw: {}, Row: {}, Collumn: {} )", self.ty, self.raw, self.row, self.collumn)
+        write!(f, "Token ( Type: {}, Raw: {}, Row: {}, column: {} )", self.ty, self.raw, self.row, self.column)
     }
 }
 
@@ -297,6 +297,6 @@ impl std::fmt::Display for LexerErrorType {
 
 impl std::fmt::Display for LexerError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "LexerError ( Type: {}, Row: {}, Collumn: {} )", self.ty, self.row, self.collumn)
+        write!(f, "LexerError ( Type: {}, Row: {}, column: {} )", self.ty, self.row, self.column)
     }
 }

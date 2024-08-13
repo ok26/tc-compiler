@@ -3,7 +3,7 @@ mod ast;
 mod gen;
 
 use lexer::{Lexer, LexerErrorType, Token, TokenType};
-use ast::Ast;
+use ast::{Ast, Node};
 use gen::gen::Gen;
 
 pub fn compile_hl(code: &str) -> String {
@@ -31,8 +31,14 @@ pub fn compile_hl(code: &str) -> String {
     let mut ast = Ast::new(tokens);
     let ast_tree = ast.generate_ast();
     for node in ast_tree.clone() {
+        match node {
+            Node::Error { .. } => { errors_found += 1; },
+            _ => {}
+        }
         println!("{}", node);
     }
+
+    if errors_found != 0 { return String::new(); }
 
     let mut asm_gen = Gen::new(ast_tree);
     asm_gen.generate_asm()

@@ -2,7 +2,7 @@ use asm_compiler::compile_asm;
 use hl_compiler::compile_hl;
 
 fn main() {
-    let asm_instructions = compile_hl(include_str!("hl_code2.hl"));
+    let asm_instructions = compile_hl(include_str!("expressions.hl"));
     println!("{}", asm_instructions);
     let machine_instructions = compile_asm(asm_instructions);
     for (i, instruction) in machine_instructions.iter().enumerate() {
