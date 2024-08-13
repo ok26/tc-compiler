@@ -7,6 +7,10 @@ name = "asm-compiler"
 version = "0.1.0"
 
 [[package]]
+name = "emulator"
+version = "0.1.0"
+
+[[package]]
 name = "hl-compiler"
 version = "0.1.0"
 
@@ -15,5 +19,6 @@ name = "tc-compiler"
 version = "0.1.0"
 dependencies = [
  "asm-compiler",
+ "emulator",
  "hl-compiler",
 ]
