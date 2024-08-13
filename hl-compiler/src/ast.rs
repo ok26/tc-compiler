@@ -1,5 +1,6 @@
 use crate::lexer::{PunctuationKind, Token, TokenType};
 
+#[derive(Clone, Debug)]
 pub enum Expression {
     Operation {
         left: Box<Expression>,
@@ -10,6 +11,7 @@ pub enum Expression {
     Function(String, Vec<String>)
 }
 
+#[derive(Clone, Debug)]
 pub enum AstErrorType {
     ExpectedIdentifier,
     ReservedKeyword,
@@ -23,6 +25,7 @@ pub enum AstErrorType {
     SyntaxError
 }
 
+#[derive(Clone, Debug)]
 pub enum Node {
     If {
         condition: Expression,

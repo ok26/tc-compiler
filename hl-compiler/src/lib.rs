@@ -4,6 +4,7 @@ mod gen;
 
 use lexer::{Lexer, Token, TokenType};
 use ast::Ast;
+use gen::gen::Gen;
 
 pub fn compile_hl(code: &str) -> String {
 
@@ -24,8 +25,10 @@ pub fn compile_hl(code: &str) -> String {
     
     let mut ast = Ast::new(tokens);
     let ast_tree = ast.generate_ast();
-    for node in ast_tree {
-        println!("{}", node);
+    for node in ast_tree.clone() {
+        println!("{:?}", node);
     }
-    code.to_string()
+
+    let mut asm_gen = Gen::new(ast_tree);
+    asm_gen.generate_asm()
 }
