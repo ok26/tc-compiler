@@ -69,7 +69,7 @@ impl Gen {
                     }
                     
                     let asm_calc_value = self.parse_expression(block[i].clone(), ram_identifier + 1);
-                    out.push_str(format!("{}mov {} r0\nlram r3\nmov {} r0\nlram r4\n{} r3 r4 r3\nsram r3\n", 
+                    out.push_str(format!("{}mov {} r0\nlram r3\nmov {} r0\nlram r4\n{} r4 r3 r3\nsram r3\n", 
                         asm_calc_value,
                         self.ram.get(&(ram_identifier + 1).to_string()).expect("Unreachable"),
                         ram_location,

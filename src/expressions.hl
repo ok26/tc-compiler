@@ -1,14 +1,11 @@
 // Simple tests
-// let v0 = 12;
-// let v1 = 1 + 2 + 3 + 4 + 5;
-// let v2 = 1 - 2 - 3 - 4 - 5;
-// let v3 = 1 - 2 + 3;
-// let v4 = 1 + 2 - 3;
-
-// Instructions are backwards for some reason (2 - 1 = -1 and 1 - 2 = 1)
-let v = 2 - 1;
+let v0 = 12;
+let v1 = 1 + 2 + 3 + 4 + 5;
+let v2 = 1 - 2 - 3 - 4 - 5;
+let v3 = 1 - 2 + 3;
+let v4 = 1 + 2 - 3;
 
 // More tests
-// let v1 = 1 + (5 - 3);
-// let v2 = v1 & 4 - (2 + v1) << (15 - test_func(1, 2, 3));
-// let v3 = 1 + ((2 - 1) + 1 << (5 - (2 + 3))) - 15;
+let v5 = 1 + (5 - 3);
+let v6 = v5 & 4 - (2 + v5) << (15 - v5);
+let v7 = 1 + ((2 - 1) + 1 << (5 - (2 + 3))) - 15;
