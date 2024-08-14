@@ -47,6 +47,9 @@ impl Emulator {
                     _ => panic!("Unreachable")
                 };
 
+                // Check for halt
+                if cond && script[i + 3] as usize == i { break; }
+
                 if cond { i = script[i + 3] as usize; continue; }
             }
             else if instruction & (1 << 9) != 0 {
@@ -85,6 +88,7 @@ impl Emulator {
 
                 if instruction & 1 != 0 {
                     i = self.stack.pop().expect("Empty Stack") as usize;
+                    continue;
                 }
                 else {
                     self.stack.push(i as u32 + 4);

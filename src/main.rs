@@ -3,7 +3,7 @@ use hl_compiler::compile_hl;
 use emulator::Emulator;
 
 fn main() {
-    let asm_instructions = compile_hl(include_str!("expressions.hl"));
+    let asm_instructions = compile_hl(include_str!("conditions.hl"));
     println!("{}", asm_instructions);
     let machine_instructions = compile_asm(asm_instructions);
     for (i, instruction) in machine_instructions.iter().enumerate() {

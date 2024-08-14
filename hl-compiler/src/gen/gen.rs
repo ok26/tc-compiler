@@ -4,6 +4,8 @@ use crate::gen::ram::Ram;
 pub struct Gen {
     ast: Vec<Node>,
     ram: Ram,
+    current_label: usize,
+    asm: String
 }
 
 impl Gen {
@@ -11,6 +13,8 @@ impl Gen {
         Gen {
             ast,
             ram: Ram::new(4096),
+            current_label: 0,
+            asm: String::new()
         }
     }
 
@@ -101,26 +105,77 @@ impl Gen {
         format!("{}mov {} r0\nlram r3\nmov {} r0\nsram r3\n", asm_instruction, value_ram_location, ram_location)
     }
 
+    fn parse_body(&mut self, body: &Vec<Node>, jump_to: String, jump_back: Option<String>) {
+        let mut out = format!("l{}:\n", jump_to);
+        for node in body {
+            out.push_str(&self.parse_node(node).as_str());
+        }
+        if let Some(jump_back) = jump_back {
+            out.push_str(format!("jmp l{}\n", jump_back).as_str());
+        }
+        else {
+            out.push_str("ret\n");
+        }
+        self.asm.insert_str(0, out.as_str());
+    }
+
+    fn parse_if_statement(&mut self, condition: &Expression, body: &Vec<Node>, else_body: Option<&Vec<Node>>) -> String {
+        let asm_instructions = self.parse_expression(condition.clone(), 0);
+        let cond_ram_location = self.ram.get(&String::from("0")).expect("Unreachable").clone();
+        self.ram.free(&String::from("0"));
+
+        let out: String;
+        if let Some(else_body) = else_body {
+            out = format!("{}mov {} r0\nlram r3\njt r3 l{}\njf r3 l{}\nl{}:\n",
+                asm_instructions,
+                cond_ram_location,
+                self.current_label,
+                self.current_label + 1,
+                self.current_label + 2
+            );
+            self.parse_body(body, self.current_label.to_string(), Some((self.current_label + 2).to_string()));
+            self.parse_body(else_body, (self.current_label + 1).to_string(), Some((self.current_label + 2).to_string()));
+            self.current_label += 3;
+        }
+        else {
+            out = format!("{}mov {} r0\nlram r3\njt r3 l{}\nl{}:\n", 
+                asm_instructions,
+                cond_ram_location, 
+                self.current_label, 
+                self.current_label + 1
+            );
+            self.parse_body(body, self.current_label.to_string(), Some((self.current_label + 1).to_string()));
+            self.current_label += 2;
+        }
+        out   
+    }
+
+    fn parse_function(&mut self, identifier: &String, arguments: &Vec<String>, body: &Vec<Node>) -> String {
+        self.parse_body(body, identifier.clone(), None);
+        String::new()
+    }
+
     fn parse_node(&mut self, node: &Node) -> String {
         
         return match node {
             Node::VariableAssignment { identifier, value } => self.parse_variable_assignment(identifier, value),
-            Node::If { condition, body } => String::new(),
-            Node::IfElse { condition, body, else_body } => String::new(),
+            Node::If { condition, body } => self.parse_if_statement(condition, body, None),
+            Node::IfElse { condition, body, else_body } => self.parse_if_statement(condition, body, Some(else_body)),
             Node::While { condition, body } => String::new(),
             Node::For { variable, condition, loop_increment, body } => String::new(),
-            Node::Function { identifier, arguments, body } => String::new(),
+            Node::Function { identifier, arguments, body } => self.parse_function(identifier, arguments, body),
             Node::Return { value } => String::new(),
             Node::Error { ty, row, column } => panic!("Unreachable")
         }
     }
 
     pub fn generate_asm(&mut self) -> String {
-        let mut asm = String::new();
         for node in self.ast.clone() {
-            asm.push_str(self.parse_node(&node).as_str()) 
-        }
+            let asm = self.parse_node(&node);
+            self.asm.push_str(asm.as_str());
+        }  
 
-        asm
+        self.asm.insert_str(0, "call lmain\nhlt\n");
+        self.asm.clone()
     }
 }
