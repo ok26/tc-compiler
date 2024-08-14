@@ -15,10 +15,6 @@ impl Ram {
         }
     }
 
-    pub fn contains(&self, variable: &String) -> bool {
-        self.variables.contains_key(variable)
-    }
-
     pub fn get(&self, variable: &String) -> Option<&usize> {
         self.variables.get(variable)
     }

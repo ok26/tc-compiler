@@ -15,7 +15,6 @@ fn main() {
     }
 
     // Calculate the integer square root of num
-
     let num = 38623;
 
     let l = 0;

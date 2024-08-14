@@ -25,9 +25,6 @@ pub enum AstErrorType {
     ExpectedIntegerOperator,
     SyntaxError,
     UnevenParenthesis,
-
-    // Will be added, thrown when self.i >= self.tokens.len()
-    IncompleteLine
 }
 
 #[derive(Clone, Debug)]
@@ -670,7 +667,6 @@ impl std::fmt::Display for AstErrorType {
             AstErrorType::ExpectedValue => "Expected Value",
             AstErrorType::ReservedKeyword => "Reserved Keyword",
             AstErrorType::SyntaxError => "Syntax Error",
-            AstErrorType::IncompleteLine => "Incomplete Line",
             AstErrorType::UnevenParenthesis => "Uneven Parenthesis"
         };
         write!(f, "{}", out)

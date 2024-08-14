@@ -187,7 +187,7 @@ impl Gen {
             Node::For { variable, condition, loop_increment, body } => String::new(),
             Node::Function { identifier, arguments, body } => self.parse_function(identifier, arguments, body),
             Node::Return { value } => String::new(),
-            Node::Error { ty, row, column } => panic!("Unreachable")
+            Node::Error { .. } => panic!("Unreachable")
         }
     }
 
