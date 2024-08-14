@@ -19,6 +19,7 @@ impl Gen {
     }
 
     fn parse_function_call(&self, identifier: &String, arguments: &Vec<String>) -> String {
+        //TODO
         String::new()
     }
 
@@ -120,14 +121,14 @@ impl Gen {
     }
 
     fn parse_if_statement(&mut self, condition: &Expression, body: &Vec<Node>, else_body: Option<&Vec<Node>>) -> String {
-        let asm_instructions = self.parse_expression(condition.clone(), 0);
+        let expression_asm = self.parse_expression(condition.clone(), 0);
         let cond_ram_location = self.ram.get(&String::from("0")).expect("Unreachable").clone();
         self.ram.free(&String::from("0"));
 
         let out: String;
         if let Some(else_body) = else_body {
             out = format!("{}mov {} r0\nlram r3\njt r3 l{}\njf r3 l{}\nl{}:\n",
-                asm_instructions,
+                expression_asm,
                 cond_ram_location,
                 self.current_label,
                 self.current_label + 1,
@@ -139,7 +140,7 @@ impl Gen {
         }
         else {
             out = format!("{}mov {} r0\nlram r3\njt r3 l{}\nl{}:\n", 
-                asm_instructions,
+                expression_asm,
                 cond_ram_location, 
                 self.current_label, 
                 self.current_label + 1
@@ -152,7 +153,28 @@ impl Gen {
 
     fn parse_function(&mut self, identifier: &String, arguments: &Vec<String>, body: &Vec<Node>) -> String {
         self.parse_body(body, identifier.clone(), None);
+
+        //TODO
+
         String::new()
+    }
+
+    fn parse_while_loop(&mut self, condition: &Expression, body: &Vec<Node>) -> String {
+        let jump_to = self.current_label;
+        let jump_back = self.current_label + 1;
+        self.current_label += 2;
+        self.parse_body(body, jump_to.to_string(), Some(jump_back.to_string()));
+        let expression_asm = self.parse_expression(condition.clone(), 0);
+        let cond_ram_location = self.ram.get(&String::from("0")).expect("Unreachable").clone();
+        self.ram.free(&String::from("0"));
+
+        let out = format!("l{}:\n{}mov {} r0\nlram r3\njt r3 l{}\n", 
+            jump_back, 
+            expression_asm, 
+            cond_ram_location, 
+            jump_to
+        );
+        out
     }
 
     fn parse_node(&mut self, node: &Node) -> String {
@@ -161,7 +183,7 @@ impl Gen {
             Node::VariableAssignment { identifier, value } => self.parse_variable_assignment(identifier, value),
             Node::If { condition, body } => self.parse_if_statement(condition, body, None),
             Node::IfElse { condition, body, else_body } => self.parse_if_statement(condition, body, Some(else_body)),
-            Node::While { condition, body } => String::new(),
+            Node::While { condition, body } => self.parse_while_loop(condition, body),
             Node::For { variable, condition, loop_increment, body } => String::new(),
             Node::Function { identifier, arguments, body } => self.parse_function(identifier, arguments, body),
             Node::Return { value } => String::new(),

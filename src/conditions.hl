@@ -1,9 +1,43 @@
 fn main() {
-    let v = 1 << 10;
-    if (v >= 1000) {
-        let v1 = 100;
+
+    // Calculate n:th fibonacci number
+    let fib1 = 0;
+    let fib2 = 1;
+    let last = 0;
+
+    let n = 0;
+    while (n < 40) {
+        last = fib2;
+        fib2 = fib1 + fib2;
+        fib1 = last;
+
+        n = n + 1;
     }
-    else {
-        let v1 = 200;
+
+    // Calculate the integer square root of num
+
+    let num = 38623;
+
+    let l = 0;
+    let r = num;
+    while (l <= r) {
+        let mid = (l + r + 1) >> 1;
+
+        // Computer does not support multiplication yet which makes this very slow
+        let squared = 0;
+        let loops = 0;
+        while (loops < mid) {
+            squared = squared + mid;
+            loops = loops + 1;
+        }
+
+        if (squared <= num) {
+            l = mid + 1;
+        }
+        else {
+            r = mid - 1;
+        }
     }
+
+    let integer_square_root = r;
 }
