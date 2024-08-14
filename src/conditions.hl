@@ -1,6 +1,6 @@
 fn main() {
     let v = 1 << 10;
-    if (v >= 2000) {
+    if (v >= 1000) {
         let v1 = 100;
     }
     else {

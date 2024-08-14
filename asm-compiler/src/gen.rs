@@ -174,8 +174,8 @@ pub fn gen_instructions(tokens: Vec<Token>) -> Vec<u32> {
                 if i + 2 >= tokens.len() { panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column) }
 
                 let mut current_inst = match token.ty {
-                    TokenType::Jf => 1 << 8,
-                    TokenType::Jt => (1 << 8) + 1,
+                    TokenType::Jf => (1 << 8) + (1 << 30),
+                    TokenType::Jt => (1 << 8) + (1 << 30) + 1,
                     TokenType::Not => 4,
                     TokenType::Mov => 1 << 30,
                     _ => panic!("Unreachable")
