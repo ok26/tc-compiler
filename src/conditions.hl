@@ -5,13 +5,11 @@ fn main() {
     let fib2 = 1;
     let last = 0;
 
-    let n = 0;
-    while (n < 40) {
+    let n = 40;
+    for (let i = 0; i < n; i = i + 1) {
         last = fib2;
         fib2 = fib1 + fib2;
         fib1 = last;
-
-        n = n + 1;
     }
 
     // Calculate the integer square root of num
