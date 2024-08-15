@@ -24,10 +24,8 @@ fn main() {
 
         // Computer does not support multiplication yet which makes this very slow
         let squared = 0;
-        let loops = 0;
-        while (loops < mid) {
+        for (let i = 0; i < mid; i = i + 1) {
             squared = squared + mid;
-            loops = loops + 1;
         }
 
         if (squared <= num) {

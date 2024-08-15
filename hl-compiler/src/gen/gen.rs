@@ -106,7 +106,7 @@ impl Gen {
         format!("{}mov {} r0\nlram r3\nmov {} r0\nsram r3\n", asm_instruction, value_ram_location, ram_location)
     }
 
-    fn parse_body(&mut self, body: &Vec<Node>, jump_to: String, jump_back: Option<String>) {
+    fn parse_body(&mut self, body: &Vec<Node>, jump_to: String, jump_back: Option<String>) -> String {
         let mut out = format!("l{}:\n", jump_to);
         for node in body {
             out.push_str(&self.parse_node(node).as_str());
@@ -117,7 +117,7 @@ impl Gen {
         else {
             out.push_str("ret\n");
         }
-        self.asm.insert_str(0, out.as_str());
+        out
     }
 
     fn parse_if_statement(&mut self, condition: &Expression, body: &Vec<Node>, else_body: Option<&Vec<Node>>) -> String {
@@ -134,8 +134,10 @@ impl Gen {
                 self.current_label + 1,
                 self.current_label + 2
             );
-            self.parse_body(body, self.current_label.to_string(), Some((self.current_label + 2).to_string()));
-            self.parse_body(else_body, (self.current_label + 1).to_string(), Some((self.current_label + 2).to_string()));
+            let body_asm = self.parse_body(body, self.current_label.to_string(), Some((self.current_label + 2).to_string()));
+            self.asm.insert_str(0, body_asm.as_str());
+            let else_body_asm = self.parse_body(else_body, (self.current_label + 1).to_string(), Some((self.current_label + 2).to_string()));
+            self.asm.insert_str(0, else_body_asm.as_str());
             self.current_label += 3;
         }
         else {
@@ -145,15 +147,16 @@ impl Gen {
                 self.current_label, 
                 self.current_label + 1
             );
-            self.parse_body(body, self.current_label.to_string(), Some((self.current_label + 1).to_string()));
+            let body_asm = self.parse_body(body, self.current_label.to_string(), Some((self.current_label + 1).to_string()));
+            self.asm.insert_str(0, body_asm.as_str());
             self.current_label += 2;
         }
         out   
     }
 
     fn parse_function(&mut self, identifier: &String, arguments: &Vec<String>, body: &Vec<Node>) -> String {
-        self.parse_body(body, identifier.clone(), None);
-
+        let body_asm = self.parse_body(body, identifier.clone(), None);
+        self.asm.insert_str(0, body_asm.as_str());
         //TODO
 
         String::new()
@@ -163,7 +166,9 @@ impl Gen {
         let jump_to = self.current_label;
         let jump_back = self.current_label + 1;
         self.current_label += 2;
-        self.parse_body(body, jump_to.to_string(), Some(jump_back.to_string()));
+        let body_asm = self.parse_body(body, jump_to.to_string(), Some(jump_back.to_string()));
+        self.asm.insert_str(0, body_asm.as_str());
+        
         let expression_asm = self.parse_expression(condition.clone(), 0);
         let cond_ram_location = self.ram.get(&String::from("0")).expect("Unreachable").clone();
         self.ram.free(&String::from("0"));
@@ -177,6 +182,49 @@ impl Gen {
         out
     }
 
+    fn parse_for_loop(&mut self, variable: &Box<Option<Node>>, condition: &Expression, loop_increment: &Box<Option<Node>>, body: &Vec<Node>) -> String {
+        let jump_to = self.current_label;
+        let jump_back = self.current_label + 1;
+        self.current_label += 2;
+        let variable_asm: String;
+
+        if let Some(variable_assinment) = &**variable { match variable_assinment {
+            Node::VariableAssignment { identifier, value } => variable_asm = self.parse_variable_assignment(identifier, value),
+            _ => panic!("Unreachable")
+        }}
+        else { variable_asm = String::new(); }
+
+        let mut body_asm = self.parse_body(body, jump_to.to_string(), Some(jump_back.to_string()));
+        if let Some(loop_increment) = &**loop_increment { match loop_increment {
+            Node::VariableAssignment { identifier, value } => {
+
+                let mut i = body_asm.len();
+                let mut chars = body_asm.chars().rev();
+                chars.next(); // Skip first new line
+                while let Some(c) = chars.next() {
+                    i -= 1;
+                    if c == '\n' { break; }
+                }
+                body_asm.insert_str(i, self.parse_variable_assignment(identifier, value).as_str());
+            },
+            _ => panic!("Unreachable")
+        }}
+        self.asm.insert_str(0, body_asm.as_str());
+
+        let expression_asm = self.parse_expression(condition.clone(), 0);
+        let cond_ram_location = self.ram.get(&String::from("0")).expect("Unreachable").clone();
+        self.ram.free(&String::from("0"));
+
+        let out = format!("{}l{}:\n{}mov {} r0\n lram r3\n jt r3 l{}\n",
+            variable_asm,
+            jump_back,
+            expression_asm,
+            cond_ram_location,
+            jump_to            
+        );
+        out
+    }
+
     fn parse_node(&mut self, node: &Node) -> String {
         
         return match node {
@@ -184,7 +232,7 @@ impl Gen {
             Node::If { condition, body } => self.parse_if_statement(condition, body, None),
             Node::IfElse { condition, body, else_body } => self.parse_if_statement(condition, body, Some(else_body)),
             Node::While { condition, body } => self.parse_while_loop(condition, body),
-            Node::For { variable, condition, loop_increment, body } => String::new(),
+            Node::For { variable, condition, loop_increment, body } => self.parse_for_loop(variable, condition, loop_increment, body),
             Node::Function { identifier, arguments, body } => self.parse_function(identifier, arguments, body),
             Node::Return { value } => String::new(),
             Node::Error { .. } => panic!("Unreachable")

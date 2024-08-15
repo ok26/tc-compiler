@@ -25,6 +25,7 @@ pub enum AstErrorType {
     ExpectedIntegerOperator,
     SyntaxError,
     UnevenParenthesis,
+    ExpectedExpression
 }
 
 #[derive(Clone, Debug)]
@@ -44,7 +45,7 @@ pub enum Node {
     },
     For {
         variable: Box<Option<Node>>,
-        condition: Option<Expression>,
+        condition: Expression,
         loop_increment: Box<Option<Node>>,
         body: Vec<Node>
     },
@@ -529,15 +530,18 @@ impl Ast {
         }
 
         let token = self.tokens[self.i].clone();
-        let expression: Option<Expression>;
+        let expression: Expression;
 
         if token.raw == ";" { 
-            expression = None;
-            self.i += 1; 
+            return Node::Error {
+                ty: AstErrorType::ExpectedExpression,
+                row: token.row,
+                column: token.column
+            }
         }
         else {
             match self.parse_boolean_expression(";") {
-                Ok(boolean_expression) => { expression = Some(boolean_expression); },
+                Ok(boolean_expression) => { expression = boolean_expression; },
                 Err(error) => return error
             }
         }
@@ -667,7 +671,8 @@ impl std::fmt::Display for AstErrorType {
             AstErrorType::ExpectedValue => "Expected Value",
             AstErrorType::ReservedKeyword => "Reserved Keyword",
             AstErrorType::SyntaxError => "Syntax Error",
-            AstErrorType::UnevenParenthesis => "Uneven Parenthesis"
+            AstErrorType::UnevenParenthesis => "Uneven Parenthesis",
+            AstErrorType::ExpectedExpression => "Expected Expression"
         };
         write!(f, "{}", out)
     }
@@ -713,16 +718,12 @@ fn convert_node_to_string(node: &Node, inc: usize) -> String {
                 None => String::new()
             };
             variable_out.pop();
-            let condition_out = match &*condition {
-                Some(condition) => format!("{}", condition),
-                None => String::new()
-            };
             let mut loop_increment_out = match &**loop_increment {
                 Some(loop_increment) => format!("{}", loop_increment),
                 None => String::new()
             };
             loop_increment_out.pop();
-            let mut out = format!("{}For: {}, Condition: {}, Loop increment: {}\n", "\t".to_string().repeat(inc), variable_out, condition_out, loop_increment_out);
+            let mut out = format!("{}For: {}, Condition: {}, Loop increment: {}\n", "\t".to_string().repeat(inc), variable_out, condition, loop_increment_out);
             for part in body {
                 out.push_str(format!("{}", convert_node_to_string(part, inc + 1)).as_str());
             }
