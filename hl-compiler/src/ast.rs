@@ -212,7 +212,7 @@ impl Ast {
             if operator.raw == "(" {
 
                 // Numbers not allowed as function names
-                if operator.ty == TokenType::Number {
+                if value.ty == TokenType::Number {
                     return Err(Node::Error {
                         ty: AstErrorType::ExpectedIdentifier,
                         row: value.row,
