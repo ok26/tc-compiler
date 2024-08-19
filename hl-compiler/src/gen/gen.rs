@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::ast::{Expression, Node};
 use crate::gen::ram::Ram;
 
@@ -5,22 +7,31 @@ pub struct Gen {
     ast: Vec<Node>,
     ram: Ram,
     current_label: usize,
+    current_function: String,
+    function_arguments: HashMap<String, Vec<String>>,
     asm: String
 }
 
 impl Gen {
     pub fn new(ast: Vec<Node>) -> Gen {
+
+        let mut function_arguments = HashMap::new();
+        for node in ast.clone() { match node {
+            Node::Function { identifier, arguments, body: _ } => { function_arguments.insert(identifier, arguments); },
+            _ => {}
+        }}
         Gen {
             ast,
             ram: Ram::new(4096),
             current_label: 0,
+            current_function: String::new(),
+            function_arguments,
             asm: String::new()
         }
     }
 
-    fn parse_function_call(&self, identifier: &String, arguments: &Vec<String>) -> String {
-        //TODO
-        String::new()
+    fn get_ram_identifier(&self, identifier: &String) -> String {
+        format!("{}:{}", self.current_function, identifier)
     }
 
     // Parses expression and puts final value in r5
@@ -33,13 +44,13 @@ impl Gen {
                 if value.chars().nth(0).expect("Unreachable").is_numeric() {
                     return format!("mov {} r0\nsram {}\n", ram_location, value.parse::<isize>().expect("Unreachable") as usize);
                 }
-                if let Some(variable_ram_location) = self.ram.get(&value) {
+                if let Some(variable_ram_location) = self.ram.get(&self.get_ram_identifier(&value)) {
                     return format!("mov {} r0\nlram r3\nmov {} r0\nsram r3\n", variable_ram_location, ram_location);
                 }
                 panic!("Non initialized variable: {}", value);
             },
             Expression::Function(identifier, arguments) => {
-                let function_call_asm = self.parse_function_call(&identifier, &arguments);
+                let function_call_asm = self.parse_function_call(&identifier, &arguments, ram_identifier + 1);
                 return format!("{}mov 0 r0\nlram r3\nmov {} r0\nsram r3\n", function_call_asm, ram_location);
             },
             Expression::Block(block) => {   
@@ -91,14 +102,7 @@ impl Gen {
 
     fn parse_variable_assignment(&mut self, identifier: &String, value: &Expression) -> String {
 
-        let ram_location: usize;
-        if let Some(location) = self.ram.get(identifier) {
-            ram_location = *location;
-        }
-        else {
-            ram_location = self.ram.allocate_next(identifier);
-        }
-
+        let ram_location = self.ram.allocate_next(&self.get_ram_identifier(identifier));
         let asm_instruction = self.parse_expression(value.clone(), 0);
         let value_ram_location = self.ram.get(&String::from("0")).expect("Unreachable").clone();
         self.ram.free(&String::from("0"));
@@ -152,14 +156,6 @@ impl Gen {
             self.current_label += 2;
         }
         out   
-    }
-
-    fn parse_function(&mut self, identifier: &String, arguments: &Vec<String>, body: &Vec<Node>) -> String {
-        let body_asm = self.parse_body(body, identifier.clone(), None);
-        self.asm.insert_str(0, body_asm.as_str());
-        //TODO
-
-        String::new()
     }
 
     fn parse_while_loop(&mut self, condition: &Expression, body: &Vec<Node>) -> String {
@@ -225,6 +221,68 @@ impl Gen {
         out
     }
 
+    fn parse_function_definition(&mut self, identifier: &String, body: &Vec<Node>) -> String {
+        let mut out = format!("f{}:\n", identifier);
+
+        self.current_function = identifier.clone();
+        for argument in self.function_arguments.get(&self.current_function).expect("Unreachable") {
+            self.ram.allocate_next(&self.get_ram_identifier(argument));
+        }
+
+        for node in body {
+            out.push_str(self.parse_node(node).as_str());
+        }
+
+        // Some functions do not return values
+        out.push_str("ret\n");
+        self.asm.insert_str(0, out.as_str());
+        String::new()
+    }
+
+    fn parse_function_call(&mut self, identifier: &String, arguments: &Vec<Expression>, ram_identifier: usize) -> String {
+
+        let mut out = String::new();
+
+        let prefix = if self.current_function == identifier.clone() { identifier.clone() } else { "-".to_string() };
+        let local_variables = self.ram.get_local_variables(&prefix);
+        for variable in &local_variables {
+            let arg_ram_location = self.ram.get(variable).expect("Unreachable");
+            out.push_str(format!("mov {} r0\nlram r1\npush r1\n", arg_ram_location).as_str());
+        }
+
+        let function_arguments = self.function_arguments.get(identifier).expect("Unreachable").clone();
+        for (i, argument) in arguments.iter().enumerate() {
+
+            let expression_asm = self.parse_expression(argument.clone(), ram_identifier);
+            let passed_arg_ram_location = self.ram.get(&ram_identifier.to_string()).expect("Unreachable").clone();
+            self.ram.free(&ram_identifier.to_string());
+
+            let arg_ram_location = self.ram.allocate_next(&format!("{}:{}", identifier, function_arguments[i]));            
+            out.push_str(format!("{}mov {} r0\nlram r1\nmov {} r0\nsram r1\n",expression_asm, passed_arg_ram_location, arg_ram_location).as_str());
+        }
+
+        out.push_str(format!("call f{}\n", identifier).as_str());
+
+        for variable in local_variables.iter().rev() {
+            let arg_ram_location = self.ram.get(&variable).expect("Unreachable");
+            out.push_str(format!("pop r1\nmov {} r0\nsram r1\n", arg_ram_location).as_str());
+        }
+        out
+    }
+
+    fn parse_return(&mut self, value: &Option<Expression>) -> String {
+
+        let mut out = String::new();
+        if let Some(value) = value {
+            let expression_asm = self.parse_expression(value.clone(), 0);
+            let value_ram_location = self.ram.get(&String::from("0")).expect("Unreachable").clone();
+            self.ram.free(&String::from("0"));
+            out.push_str(format!("{}mov {} r0\nlram r1\nmov 0 r0\nsram r1\n", expression_asm, value_ram_location).as_str());
+        }
+        out.push_str("ret\n");
+        out
+    }
+
     fn parse_node(&mut self, node: &Node) -> String {
         
         return match node {
@@ -233,8 +291,9 @@ impl Gen {
             Node::IfElse { condition, body, else_body } => self.parse_if_statement(condition, body, Some(else_body)),
             Node::While { condition, body } => self.parse_while_loop(condition, body),
             Node::For { variable, condition, loop_increment, body } => self.parse_for_loop(variable, condition, loop_increment, body),
-            Node::Function { identifier, arguments, body } => self.parse_function(identifier, arguments, body),
-            Node::Return { value } => String::new(),
+            Node::Function { identifier, arguments: _, body } => self.parse_function_definition(identifier, body),
+            Node::Return { value } => self.parse_return(value),
+            Node::FunctionCall { identifier, arguments } => self.parse_function_call(identifier, arguments, 0),
             Node::Error { .. } => panic!("Unreachable")
         }
     }
@@ -245,7 +304,7 @@ impl Gen {
             self.asm.push_str(asm.as_str());
         }  
 
-        self.asm.insert_str(0, "call lmain\nhlt\n");
+        self.asm.insert_str(0, "call fmain\nhlt\n");
         self.asm.clone()
     }
 }

@@ -5,7 +5,7 @@ use crate::lexer::{PunctuationKind, Token, TokenType};
 #[derive(Clone, Debug)]
 pub enum Expression {
     Value(String),
-    Function(String, Vec<String>),
+    Function(String, Vec<Expression>),
     Operator(String),
     ParenthesisOpen(usize),
     ParenthesisClose(usize),
@@ -60,6 +60,10 @@ pub enum Node {
     },
     Return {
         value: Option<Expression>
+    },
+    FunctionCall {
+        identifier: String,
+        arguments: Vec<Expression>
     },
     Error {
         ty: AstErrorType,
@@ -161,6 +165,23 @@ impl Ast {
         Some(arguments)
     }
 
+    fn parse_called_function_arguments(&mut self) -> Result<Vec<Expression>, Node> {
+        let mut arguments = vec![];
+        if self.tokens[self.i].raw == ")" {
+            self.i += 1;
+            return Ok(arguments);
+        }
+        loop {
+            match self.parse_expression(vec![")", ","]) {
+                Ok(expression) => {
+                    arguments.push(expression);
+                    if self.tokens[self.i - 1].raw == ")" { return Ok(arguments); }
+                },
+                Err(error) => return Err(error)
+            };
+        }
+    }
+
     fn parse_expression(&mut self, terminators: Vec<&str>) -> Result<Expression, Node> {
         let mut expression_block: Vec<Expression> = vec![];
         let mut parenthesis_number = 0;
@@ -199,17 +220,13 @@ impl Ast {
                     })
                 }
 
-                if let Some(arguments) = self.parse_function_arguments() {
-                    expression_block.push(Expression::Function(value.raw, arguments));
-                    operator = self.tokens[self.i].clone();
-                    self.i += 1;
-                }
-                else {
-                    return Err(Node::Error {
-                        ty: AstErrorType::InvalidFunctionArguments,
-                        row: operator.row,
-                        column: operator.column
-                    })
+                match self.parse_called_function_arguments() {
+                    Ok(arguments) => {
+                        expression_block.push(Expression::Function(value.raw, arguments));
+                        operator = self.tokens[self.i].clone();
+                        self.i += 1;
+                    },
+                    Err(error) => return Err(error)
                 }
             }
             else {
@@ -737,6 +754,15 @@ fn convert_node_to_string(node: &Node, inc: usize) -> String {
             }
             for part in body {
                 out.push_str(format!("{}", convert_node_to_string(part, inc + 1)).as_str());
+            }
+            out
+        },
+        Node::FunctionCall { identifier, arguments } => {
+            let mut out = format!("{}{}(", "\t".to_string().repeat(inc), identifier);
+            for (i, argument) in arguments.iter().enumerate() {
+
+                if i != arguments.len() - 1 { out.push_str(format!("{}, ", argument).as_str()); }
+                else { out.push_str(format!("{})\n", argument).as_str()); }
             }
             out
         }

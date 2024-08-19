@@ -17,6 +17,7 @@ impl Emulator {
         
         let mut i = 0;
         while i < script.len() {
+            // DEBUG: println!("{}, {:?}, {}", i, self.stack, self.ram[0]);
             let instruction = script[i];
             if instruction & (1 << 8) != 0 {
 

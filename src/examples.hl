@@ -1,0 +1,30 @@
+fn fib(n) {
+    if (n < 2) {
+        return n;
+    }
+    return fib(n - 1) + fib(n - 2);
+}
+
+fn recursive(a, b) {
+    if (a >= b) {
+        return a;
+    }
+    return recursive(a + a);
+}
+
+fn main() {
+    let recursive_fib = fib(10);
+    
+    let linear_fib = 1;
+    let previous = 0;
+    for (let i = 1; i < 10; i = i + 1) {
+        let next = linear_fib + previous;
+        previous = linear_fib;
+        linear_fib = next;
+    }
+
+    // Always true if code works correctly
+    if (recursive_fib == linear_fib) {
+        let num = recursive(1, 10000);
+    }
+}

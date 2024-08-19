@@ -19,7 +19,18 @@ impl Ram {
         self.variables.get(variable)
     }
 
+    pub fn get_local_variables(&self, prefix: &String) -> Vec<String> {
+        let mut local_variables = vec![];
+        for variable in self.variables.keys() {
+            if variable.starts_with(prefix) || variable.chars().nth(0).expect("Unreachable").is_numeric() {
+                local_variables.push(variable.clone());
+            }
+        }
+        local_variables
+    }
+
     pub fn allocate_next(&mut self, variable: &String) -> usize {
+        if let Some(location) = self.get(variable) { return *location; }
         for i in 0..self.allocated_memory.len() {
             if !self.allocated_memory[i] {
                 self.allocated_memory[i] = true;
