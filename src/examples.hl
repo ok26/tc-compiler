@@ -9,7 +9,7 @@ fn recursive(a, b) {
     if (a >= b) {
         return a;
     }
-    return recursive(a + a);
+    return recursive(a + a, b);
 }
 
 fn main() {
