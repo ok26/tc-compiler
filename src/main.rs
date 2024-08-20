@@ -4,14 +4,14 @@ use emulator::Emulator;
 
 fn main() {
     let asm_instructions = compile_hl(include_str!("examples.hl"));
-    println!("{}\n", asm_instructions.clone());
+    // println!("{}\n", asm_instructions.clone());
     let machine_instructions = compile_asm(asm_instructions);
 
     for (i, instruction) in machine_instructions.iter().enumerate() {
         if i != 0 && i % 4 == 0 {
-            println!("");
+  //          println!("");
         }
-        print!("0x{:X} ", instruction);
+//        print!("0x{:X} ", instruction);
     }
     println!("\n\n");
     

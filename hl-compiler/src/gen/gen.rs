@@ -293,7 +293,6 @@ impl Gen {
             Node::For { variable, condition, loop_increment, body } => self.parse_for_loop(variable, condition, loop_increment, body),
             Node::Function { identifier, arguments: _, body } => self.parse_function_definition(identifier, body),
             Node::Return { value } => self.parse_return(value),
-            Node::FunctionCall { identifier, arguments } => self.parse_function_call(identifier, arguments, 0),
             Node::Error { .. } => panic!("Unreachable")
         }
     }
@@ -303,7 +302,7 @@ impl Gen {
             let asm = self.parse_node(&node);
             self.asm.push_str(asm.as_str());
         }  
-
+        
         self.asm.insert_str(0, "call fmain\nhlt\n");
         self.asm.clone()
     }

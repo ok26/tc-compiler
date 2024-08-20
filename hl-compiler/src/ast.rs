@@ -61,10 +61,6 @@ pub enum Node {
     Return {
         value: Option<Expression>
     },
-    FunctionCall {
-        identifier: String,
-        arguments: Vec<Expression>
-    },
     Error {
         ty: AstErrorType,
         row: usize,
@@ -754,15 +750,6 @@ fn convert_node_to_string(node: &Node, inc: usize) -> String {
             }
             for part in body {
                 out.push_str(format!("{}", convert_node_to_string(part, inc + 1)).as_str());
-            }
-            out
-        },
-        Node::FunctionCall { identifier, arguments } => {
-            let mut out = format!("{}{}(", "\t".to_string().repeat(inc), identifier);
-            for (i, argument) in arguments.iter().enumerate() {
-
-                if i != arguments.len() - 1 { out.push_str(format!("{}, ", argument).as_str()); }
-                else { out.push_str(format!("{})\n", argument).as_str()); }
             }
             out
         }

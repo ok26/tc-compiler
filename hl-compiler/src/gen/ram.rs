@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 pub struct Ram {
     variables: HashMap<String, usize>,
-    allocated_memory: Vec<bool>
+    allocated_memory: Vec<bool>,
+    size: usize
 }
 
 impl Ram {
@@ -11,7 +12,8 @@ impl Ram {
         allocated_memory[0] = true;
         Ram {
             variables: HashMap::new(),
-            allocated_memory
+            allocated_memory,
+            size
         }
     }
 
@@ -31,7 +33,9 @@ impl Ram {
 
     pub fn allocate_next(&mut self, variable: &String) -> usize {
         if let Some(location) = self.get(variable) { return *location; }
-        for i in 0..self.allocated_memory.len() {
+
+        let start_idx = if variable.chars().nth(0).expect("Unreachable").is_numeric() { self.size / 4 } else { 0 };
+        for i in start_idx..self.allocated_memory.len() {
             if !self.allocated_memory[i] {
                 self.allocated_memory[i] = true;
                 self.variables.insert(variable.clone(), i);
@@ -45,6 +49,7 @@ impl Ram {
     pub fn free(&mut self, variable: &String) -> bool {
         if let Some(memory_location) = self.variables.remove(variable) {
             self.allocated_memory[memory_location] = false;
+            return true;
         }
         return false;
     }
