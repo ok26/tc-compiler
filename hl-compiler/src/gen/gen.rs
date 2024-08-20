@@ -184,7 +184,7 @@ impl Gen {
         let variable_asm: String;
 
         if let Some(variable_assinment) = &**variable { match variable_assinment {
-            Node::VariableAssignment { identifier, value } => variable_asm = self.parse_variable_assignment(identifier, value),
+            Node::VariableDeclaration { identifier, value } => variable_asm = self.parse_variable_assignment(identifier, value),
             _ => panic!("Unreachable")
         }}
         else { variable_asm = String::new(); }
@@ -293,6 +293,7 @@ impl Gen {
         
         return match node {
             Node::VariableAssignment { identifier, value } => self.parse_variable_assignment(identifier, value),
+            Node::VariableDeclaration { identifier, value } => self.parse_variable_assignment(identifier, value),
             Node::If { condition, body } => self.parse_if_statement(condition, body, None),
             Node::IfElse { condition, body, else_body } => self.parse_if_statement(condition, body, Some(else_body)),
             Node::While { condition, body } => self.parse_while_loop(condition, body),

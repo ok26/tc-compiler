@@ -22,7 +22,7 @@ pub struct Token {
     pub column: usize
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub enum LexerErrorType {
     UnevenPunctuation,
     UnevenFilePunctuation,
@@ -30,6 +30,7 @@ pub enum LexerErrorType {
     UnknownCharachter
 }
 
+#[derive(Clone)]
 pub struct LexerError {
     pub ty: LexerErrorType,
     row: usize,

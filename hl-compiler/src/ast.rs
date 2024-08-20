@@ -54,6 +54,10 @@ pub enum Node {
         identifier: String,
         value: Expression,
     },
+    VariableDeclaration {
+        identifier: String,
+        value: Expression
+    },
     Function {
         identifier: String,
         arguments: Vec<String>,
@@ -104,7 +108,7 @@ impl Ast {
         self.i += 1;
     }
 
-    fn parse_variable_assignment(&mut self, terminator: &str) -> Node {
+    fn parse_variable_assignment(&mut self, terminator: &str, is_declaration: bool) -> Node {
 
         let token = &self.tokens[self.i];
         self.i += 1;
@@ -137,12 +141,22 @@ impl Ast {
             };
         }
 
-        match self.parse_expression(vec![terminator]) {
-            Ok(expression) => return Node::VariableAssignment {
-                identifier,
-                value: expression
-            },
+        let value = match self.parse_expression(vec![terminator]) {
+            Ok(expression) => expression,
             Err(error) => return error
+        };
+
+        if is_declaration {
+            return Node::VariableDeclaration {
+                identifier,
+                value
+            }
+        }
+        else {
+            return Node::VariableAssignment { 
+                identifier, 
+                value 
+            }
         }
     }
 
@@ -526,18 +540,18 @@ impl Ast {
             }
         }
 
-        let variable_assignment: Option<Node>;
+        let variable_declaration: Option<Node>;
         let token = self.tokens[self.i].clone();
         self.i += 1;
 
         if token.raw == "let" {
-            variable_assignment = Some(self.parse_variable_assignment(";"));
-            match variable_assignment {
-                Some(Node::Error { .. }) => return variable_assignment.expect("Unreachable"),
+            variable_declaration = Some(self.parse_variable_assignment(";", true));
+            match variable_declaration {
+                Some(Node::Error { .. }) => return variable_declaration.expect("Unreachable"),
                 _ => {}
             }
         }
-        else if token.raw == ";" { variable_assignment = None; }
+        else if token.raw == ";" { variable_declaration = None; }
         else {
             return Node::Error {
                 ty: AstErrorType::SyntaxError,
@@ -571,7 +585,7 @@ impl Ast {
             self.i += 1;
         }
         else {
-            loop_increment = Some(self.parse_variable_assignment(")"));
+            loop_increment = Some(self.parse_variable_assignment(")", false));
             match loop_increment {
                 Some(Node::Error { .. }) => { return loop_increment.expect("Unreachable"); }
                 _ => {}
@@ -584,7 +598,7 @@ impl Ast {
 
             if body_open.raw == "{" {
                 return Node::For {
-                    variable: Box::new(variable_assignment),
+                    variable: Box::new(variable_declaration),
                     condition: expression,
                     loop_increment: Box::new(loop_increment),
                     body: self.parse_body(bracket_number)
@@ -647,7 +661,7 @@ impl Ast {
         }
 
         let ret = match token.raw.as_str() {
-            "let" => self.parse_variable_assignment(";"),
+            "let" => self.parse_variable_assignment(";", true),
             "for" => self.parse_for_loop(),
             "fn" => self.parse_function(),
             "if" => self.parse_if_statment(),
@@ -656,7 +670,7 @@ impl Ast {
             "out" => self.parse_out_keyword(),
             _ => {
                 self.i -= 1;
-                self.parse_variable_assignment(";")
+                self.parse_variable_assignment(";", false)
             }
         };
 
@@ -733,7 +747,8 @@ impl std::fmt::Display for AstErrorType {
 fn convert_node_to_string(node: &Node, inc: usize) -> String {
     return match node {
         Node::VariableAssignment { identifier, value } => format!("{}Variable assignment: {} = {}\n", "\t".to_string().repeat(inc), identifier, value),
-        Node::Error { ty, row, column } => format!("{}Error: {} on line {}, column: {}\n", "\t".to_string().repeat(inc), ty, row, column),
+        Node::VariableDeclaration { identifier, value } => format!("{}Variable assignment: {} = {}\n", "\t".to_string().repeat(inc), identifier, value),
+        Node::Error { ty, row, column } => format!("{}Error: {} on line {}, column: {}", "\t".to_string().repeat(inc), ty, row, column),
         Node::Return { value } => {
             if let Some(value) = value { format!("{}Return {}\n", "\t".to_string().repeat(inc), value) }
             else { format!("{}Return\n", "\t".to_string().repeat(inc)) }
