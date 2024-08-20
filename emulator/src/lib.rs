@@ -114,7 +114,7 @@ impl Emulator {
                     arg2 = self.reg[script[i + 2] as usize];
                 }
 
-                self.reg[script[i + 3] as usize] = match instruction % 32 {
+                let result = match instruction % 32 {
                     0 => arg1.wrapping_add(arg2),
                     1 => arg1.wrapping_sub(arg2),
                     2 => arg1 & arg2,
@@ -125,6 +125,13 @@ impl Emulator {
                     7 => arg1 >> arg2,
                     _ => panic!("Unreachable")
                 };
+
+                if script[i + 3] == 7 {
+                    println!("{}", result);
+                }
+                else {
+                    self.reg[script[i + 3] as usize] = result;
+                }
             }
             i += 4;
         }

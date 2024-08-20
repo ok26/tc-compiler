@@ -25,7 +25,8 @@ pub enum AstErrorType {
     ExpectedIntegerOperator,
     SyntaxError,
     UnevenParenthesis,
-    ExpectedExpression
+    ExpectedExpression,
+    ExpectedEndOfLine
 }
 
 #[derive(Clone, Debug)]
@@ -61,6 +62,9 @@ pub enum Node {
     Return {
         value: Option<Expression>
     },
+    Out {
+        value: Expression
+    },
     Error {
         ty: AstErrorType,
         row: usize,
@@ -83,7 +87,7 @@ impl Ast {
 
     fn is_reserved_keyword(keyword: &String) -> bool {
         match keyword.as_str() {
-            "for" | "fn" | "while" | "else" | "if" | "let" | "return" => return true,
+            "for" | "fn" | "while" | "else" | "if" | "let" | "return" | "out" => return true,
             _ => return false
         }
     }
@@ -595,6 +599,39 @@ impl Ast {
         }
     }
 
+    fn parse_out_keyword(&mut self) -> Node {
+        let token = &self.tokens[self.i];
+        self.i += 1;
+
+        if token.raw != "(" {
+            return Node::Error {
+                ty: AstErrorType::ExpectedParenthesis,
+                row: token.row,
+                column: token.column
+            };
+        }
+
+        let node = match self.parse_expression(vec![")"]) {
+            Ok(value) => Node::Out {
+                value
+            },
+            Err(error) => return error
+        };
+
+        let token = &self.tokens[self.i];
+        self.i += 1;
+
+        if token.raw != ";" {
+            return Node::Error {
+                ty: AstErrorType::ExpectedEndOfLine,
+                row: token.row,
+                column: token.column
+            }
+        }
+
+        return node;
+    }
+
     fn parse_line(&mut self) -> Option<Node> {
         
         let token = &self.tokens[self.i.min(self.tokens.len() - 1)];
@@ -616,6 +653,7 @@ impl Ast {
             "if" => self.parse_if_statment(),
             "while" => self.parse_while_loop(), 
             "return" => self.parse_return_keyword(), 
+            "out" => self.parse_out_keyword(),
             _ => {
                 self.i -= 1;
                 self.parse_variable_assignment(";")
@@ -685,7 +723,8 @@ impl std::fmt::Display for AstErrorType {
             AstErrorType::ReservedKeyword => "Reserved Keyword",
             AstErrorType::SyntaxError => "Syntax Error",
             AstErrorType::UnevenParenthesis => "Uneven Parenthesis",
-            AstErrorType::ExpectedExpression => "Expected Expression"
+            AstErrorType::ExpectedExpression => "Expected Expression",
+            AstErrorType::ExpectedEndOfLine => "Expected End of Line"
         };
         write!(f, "{}", out)
     }
@@ -752,7 +791,8 @@ fn convert_node_to_string(node: &Node, inc: usize) -> String {
                 out.push_str(format!("{}", convert_node_to_string(part, inc + 1)).as_str());
             }
             out
-        }
+        },
+        Node::Out { value } => format!("{}Out: {}\n", "\t".to_string().repeat(inc), value)
     }
 }
 

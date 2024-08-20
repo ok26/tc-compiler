@@ -7,15 +7,14 @@ fn main() {
     // println!("{}\n", asm_instructions.clone());
     let machine_instructions = compile_asm(asm_instructions);
 
-    for (i, instruction) in machine_instructions.iter().enumerate() {
-        if i != 0 && i % 4 == 0 {
-  //          println!("");
-        }
-//        print!("0x{:X} ", instruction);
-    }
-    println!("\n\n");
+//     for (i, instruction) in machine_instructions.iter().enumerate() {
+//         if i != 0 && i % 4 == 0 {
+//             println!("");
+//         }
+//             print!("0x{:X} ", instruction);
+//     }
+//     println!("\n\n");
     
     let mut emulator = Emulator::new();
     emulator.run_script(machine_instructions);
-    emulator.print_info(20);
 }

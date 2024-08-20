@@ -14,6 +14,7 @@ fn recursive(a, b) {
 
 fn main() {
     let recursive_fib = fib(10);
+    out(recursive_fib);
     
     let linear_fib = 1;
     let previous = 0;
@@ -22,9 +23,11 @@ fn main() {
         previous = linear_fib;
         linear_fib = next;
     }
+    out(linear_fib);
 
     // Always true if code works correctly
     if (recursive_fib == linear_fib) {
         let num = recursive(1, 10000);
+        out(num);
     }
 }

@@ -38,6 +38,7 @@ pub enum TokenType {
     Jle,
     Jmp,
     Halt,
+    Out,
     Reg(u32),
     Label(String),
     Value(i32)
@@ -106,6 +107,7 @@ pub fn tokenize(code: String) -> Vec<Token> {
                 "jge" => TokenType::Jge,
                 "jle" => TokenType::Jle,
                 "hlt" => TokenType::Halt,
+                "out" => TokenType::Out,
                 "jmp" => TokenType::Jmp,
                 "r0" | "r1" | "r2" | "r3" | "r4" | "r5" => TokenType::Reg(word.chars().last().unwrap() as u32 - '0' as u32),
                 "io" => TokenType::Reg(7),

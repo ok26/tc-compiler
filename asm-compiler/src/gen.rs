@@ -240,6 +240,16 @@ pub fn gen_instructions(tokens: Vec<Token>) -> Vec<u32> {
 
                 current_op += 4;
                 i += 2;
+            },
+            TokenType::Out => {
+                if i + 1 >= tokens.len() { panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column) }
+
+                let mut current_inst = 1 << 30;
+                let arg = parse_argument(&tokens[i + 1], &mut current_inst, 31);
+                instructions.append(&mut vec![current_inst, arg, 0, 7]);
+
+                current_op += 4;
+                i += 2;
             }
         }   
     }

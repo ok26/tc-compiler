@@ -34,7 +34,6 @@ impl Gen {
         format!("{}:{}", self.current_function, identifier)
     }
 
-    // Parses expression and puts final value in r5
     fn parse_expression(&mut self, expression: Expression, ram_identifier: usize) -> String {
 
         let ram_location = self.ram.allocate_next(&ram_identifier.to_string());
@@ -283,6 +282,13 @@ impl Gen {
         out
     }
 
+    fn parse_out_call(&mut self, value: &Expression) -> String {
+        let expression_asm = self.parse_expression(value.clone(), 0);
+        let value_ram_location = self.ram.get(&String::from("0")).expect("Unreachable").clone();
+        self.ram.free(&String::from("0"));
+        format!("{}mov {} r0\nlram r3\nout r3\n", expression_asm, value_ram_location)
+    }
+
     fn parse_node(&mut self, node: &Node) -> String {
         
         return match node {
@@ -293,6 +299,7 @@ impl Gen {
             Node::For { variable, condition, loop_increment, body } => self.parse_for_loop(variable, condition, loop_increment, body),
             Node::Function { identifier, arguments: _, body } => self.parse_function_definition(identifier, body),
             Node::Return { value } => self.parse_return(value),
+            Node::Out { value } => self.parse_out_call(value),
             Node::Error { .. } => panic!("Unreachable")
         }
     }
@@ -302,7 +309,7 @@ impl Gen {
             let asm = self.parse_node(&node);
             self.asm.push_str(asm.as_str());
         }  
-        
+
         self.asm.insert_str(0, "call fmain\nhlt\n");
         self.asm.clone()
     }
