@@ -2,8 +2,8 @@ use std::cmp::max;
 
 use crate::lexer::{PunctuationKind, Token, TokenType};
 
-#[derive(Clone, Debug)]
-pub enum Expression {
+#[derive(Clone)]
+pub enum ExpressionType {
     Value(String),
     Function(String, Vec<Expression>),
     Operator(String),
@@ -12,7 +12,14 @@ pub enum Expression {
     Block(Vec<Expression>)
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
+pub struct Expression {
+    pub ty: ExpressionType,
+    pub row: usize,
+    pub column: usize
+}
+
+#[derive(Clone)]
 pub enum AstErrorType {
     ExpectedIdentifier,
     ReservedKeyword,
@@ -29,8 +36,8 @@ pub enum AstErrorType {
     ExpectedEndOfLine
 }
 
-#[derive(Clone, Debug)]
-pub enum Node {
+#[derive(Clone)]
+pub enum NodeType {
     If {
         condition: Expression,
         body: Vec<Node>
@@ -69,11 +76,14 @@ pub enum Node {
     Out {
         value: Expression
     },
-    Error {
-        ty: AstErrorType,
-        row: usize,
-        column: usize
-    }
+    Error (AstErrorType)
+}
+
+#[derive(Clone)]
+pub struct Node {
+    pub ty: NodeType,
+    pub row: usize,
+    pub column: usize
 }
 
 pub struct Ast {
@@ -114,28 +124,28 @@ impl Ast {
         self.i += 1;
 
         if token.ty != TokenType::Identifier {
-            return Node::Error {
-                ty: AstErrorType::ExpectedIdentifier,
+            return Node {
+                ty: NodeType::Error(AstErrorType::ExpectedIdentifier),
                 row: token.row,
                 column: token.column
             };
         }
 
         if Ast::is_reserved_keyword(&token.raw) {
-            return Node::Error {
-                ty: AstErrorType::ReservedKeyword,
+            return Node {
+                ty: NodeType::Error(AstErrorType::ReservedKeyword),
                 row: token.row,
                 column: token.column
             };
         }
 
         let identifier = token.raw.clone();
-        let token = &self.tokens[self.i];
+        let token = self.tokens[self.i].clone();
         self.i += 1;
         
         if token.raw != String::from("=") {
-            return Node::Error {
-                ty: AstErrorType::ExpectedAssignment,
+            return Node {
+                ty: NodeType::Error(AstErrorType::ExpectedAssignment),
                 row: token.row,
                 column: token.column
             };
@@ -147,16 +157,24 @@ impl Ast {
         };
 
         if is_declaration {
-            return Node::VariableDeclaration {
-                identifier,
-                value
-            }
+            return Node {
+                ty: NodeType::VariableDeclaration {
+                    identifier,
+                    value
+                },
+                row: token.row,
+                column: token.column
+            };
         }
         else {
-            return Node::VariableAssignment { 
-                identifier, 
-                value 
-            }
+            return Node {
+                ty: NodeType::VariableAssignment {
+                    identifier,
+                    value
+                },
+                row: token.row,
+                column: token.column
+            };
         }
     }
 
@@ -206,17 +224,21 @@ impl Ast {
             self.i += 1;
             if value.raw == "(" {
                 max_parenthesis_number = max(max_parenthesis_number, parenthesis_number);
-                expression_block.push(Expression::ParenthesisOpen(parenthesis_number));
+                expression_block.push(Expression {
+                    ty: ExpressionType::ParenthesisOpen(parenthesis_number),
+                    row: value.row,
+                    column: value.column
+                });
                 parenthesis_number += 1;
                 continue;
             }
 
             if value.ty != TokenType::Identifier && value.ty != TokenType::Number {
-                return Err(Node::Error {
-                    ty: AstErrorType::ExpectedValue,
+                return Err(Node {
+                    ty: NodeType::Error(AstErrorType::ExpectedValue),
                     row: value.row,
                     column: value.column
-                })
+                });
             }
 
             let mut operator = self.tokens[self.i].clone();
@@ -227,16 +249,20 @@ impl Ast {
 
                 // Numbers not allowed as function names
                 if value.ty == TokenType::Number {
-                    return Err(Node::Error {
-                        ty: AstErrorType::ExpectedIdentifier,
+                    return Err(Node {
+                        ty: NodeType::Error(AstErrorType::ExpectedIdentifier),
                         row: value.row,
                         column: value.column
-                    })
+                    });
                 }
 
                 match self.parse_called_function_arguments() {
                     Ok(arguments) => {
-                        expression_block.push(Expression::Function(value.raw, arguments));
+                        expression_block.push(Expression {
+                            ty: ExpressionType::Function(value.raw, arguments),
+                            row: value.row,
+                            column: value.column
+                        });
                         operator = self.tokens[self.i].clone();
                         self.i += 1;
                     },
@@ -244,7 +270,11 @@ impl Ast {
                 }
             }
             else {
-                expression_block.push(Expression::Value(value.raw));
+                expression_block.push(Expression {
+                    ty: ExpressionType::Value(value.raw),
+                    row: value.row,
+                    column: value.column
+                });
             }
 
             while operator.raw == ")" {
@@ -252,16 +282,19 @@ impl Ast {
                 if terminators.contains(&operator.raw.as_str()) && (operator.raw != ")" || parenthesis_number == 0) { break; }
 
                 if parenthesis_number == 0 {
-                    println!("{}, {}", terminators[0], parenthesis_number);
-                    return Err(Node::Error {
-                        ty: AstErrorType::UnevenParenthesis,
+                    return Err(Node {
+                        ty: NodeType::Error(AstErrorType::UnevenParenthesis),
                         row: operator.row,
                         column: operator.column
-                    })
+                    });
                 }
 
                 parenthesis_number -= 1;
-                expression_block.push(Expression::ParenthesisClose(parenthesis_number));
+                expression_block.push(Expression {
+                    ty: ExpressionType::ParenthesisClose(parenthesis_number),
+                    row: operator.row,
+                    column: operator.column
+                });
                 operator = self.tokens[self.i].clone();
                 self.i += 1;
             }
@@ -269,32 +302,34 @@ impl Ast {
             if terminators.contains(&operator.raw.as_str()) && (operator.raw != ")" || parenthesis_number == 0) { break; }
 
             if operator.ty != TokenType::Operator {
-                return Err(Node::Error {
-                    ty: AstErrorType::ExpectedOperator,
+                return Err(Node {
+                    ty: NodeType::Error(AstErrorType::ExpectedOperator),
                     row: operator.row,
                     column: operator.column
-                })
+                });
             }
 
             if !Ast::is_int_operator(&operator.raw) {
-                return Err(Node::Error {
-                    ty: AstErrorType::ExpectedIntegerOperator,
+                return Err(Node {
+                    ty: NodeType::Error(AstErrorType::ExpectedIntegerOperator),
                     row: operator.row,
                     column: operator.column
-                })
+                });
             }
 
-            expression_block.push(Expression::Operator(operator.raw));
-
+            expression_block.push(Expression {
+                ty: ExpressionType::Operator(operator.raw),
+                row: operator.row,
+                column: operator.column
+            });
         }
 
         if parenthesis_number != 0 {
-            println!("{}", parenthesis_number);
-            return Err(Node::Error {
-                ty: AstErrorType::UnevenParenthesis,
+            return Err(Node {
+                ty: NodeType::Error(AstErrorType::UnevenParenthesis),
                 row: self.tokens[self.i - 1].row,
                 column: self.tokens[self.i - 1].column
-            })
+            });
         }
 
         let mut parenthesis_number = max_parenthesis_number;
@@ -303,10 +338,10 @@ impl Ast {
             let mut i = 0;
             while i < expression_block.len() {
                 let expression = &expression_block[i];
+                
+                if let ExpressionType::ParenthesisOpen(number) = expression.ty {
 
-                if let Expression::ParenthesisOpen(number) = expression {
-
-                    if *number != parenthesis_number {
+                    if number != parenthesis_number {
                         new_block.push(expression.clone());
                         i = i + 1;
                         continue;
@@ -317,11 +352,15 @@ impl Ast {
                     i = i + 1;
                     loop {
                         let expression = &expression_block[i];
-                        if let Expression::ParenthesisClose(number) = expression { if *number == parenthesis_number { break; } }
+                        if let ExpressionType::ParenthesisClose(number) = expression.ty { if number == parenthesis_number { break; } }
                         compressed_block.push(expression.clone());
                         i = i + 1;
                     }
-                    new_block.push(Expression::Block(compressed_block));
+                    new_block.push(Expression {
+                        ty: ExpressionType::Block(compressed_block),
+                        row: 0, // This will never really be read
+                        column: 0 // Same here
+                    });
                 }
                 else { new_block.push(expression.clone()); }
 
@@ -335,17 +374,28 @@ impl Ast {
 
         // Easy to add more hierarchy for operations and not just parenthesis in future
 
-        Ok(Expression::Block(expression_block))
+        Ok(Expression {
+            ty: ExpressionType::Block(expression_block),
+            row: 0,
+            column: 0
+        })
     }
 
     fn parse_boolean_expression(&mut self, terminator: &str) -> Result<Expression, Node> {
         match self.parse_expression(vec!["<", ">", "<=", ">=", "==", "!="]) {
             Ok(left_expression) => {
                 let boolean_operator = self.tokens[self.i - 1].clone();
+                let boolean_operator_exp = Expression {
+                    ty: ExpressionType::Operator(boolean_operator.raw),
+                    row: boolean_operator.row,
+                    column: boolean_operator.column
+                };
                 match self.parse_expression(vec![terminator]) {
-                    Ok(right_expression) => return Ok(Expression::Block (
-                        vec![left_expression, Expression::Operator(boolean_operator.raw), right_expression]
-                    )),
+                    Ok(right_expression) => return Ok(Expression {
+                        ty: ExpressionType::Block(vec![left_expression, boolean_operator_exp, right_expression]),
+                        row: 0,
+                        column: 0
+                    }),
                     Err(error) => return Err(error)
                 }
             },
@@ -358,21 +408,21 @@ impl Ast {
         self.i += 1;
 
         if token.ty != TokenType::Identifier {
-            return Node::Error {
-                ty: AstErrorType::ExpectedIdentifier,
+            return Node {
+                ty: NodeType::Error(AstErrorType::ExpectedIdentifier),
                 row: token.row,
                 column: token.column
-            }
+            };
         }
 
         let seperator = self.tokens[self.i].clone();
         self.i += 1;
         if seperator.raw != "(" {
-            return Node::Error {
-                ty: AstErrorType::InvalidFunctionArguments,
+            return Node {
+                ty: NodeType::Error(AstErrorType::InvalidFunctionArguments),
                 row: seperator.row,
                 column: seperator.column
-            }
+            };
         }
 
         if let Some(arguments) = self.parse_function_arguments() {
@@ -382,26 +432,30 @@ impl Ast {
             if let TokenType::Punctuation(PunctuationKind::Open(body_number)) = body_open.ty {
 
                 if body_open.raw == "{" {
-                    return Node::Function {
-                        identifier: token.raw.clone(),
-                        arguments,
-                        body: self.parse_body(body_number)
-                    }
+                    return Node {
+                        ty: NodeType::Function {
+                            identifier: token.raw.clone(),
+                            arguments,
+                            body: self.parse_body(body_number)
+                        },
+                        row: seperator.row,
+                        column: seperator.column
+                    };
                 }
             }
-            
-            return Node::Error {
-                ty: AstErrorType::ExpectedBody,
+
+            return Node {
+                ty: NodeType::Error(AstErrorType::ExpectedBody),
                 row: body_open.row,
                 column: body_open.column
-            }
+            };
         }
         else {
-            return Node::Error {
-                ty: AstErrorType::InvalidFunctionArguments,
+            return Node {
+                ty: NodeType::Error(AstErrorType::InvalidFunctionArguments),
                 row: seperator.row,
                 column: seperator.column
-            }
+            };
         }
     }
 
@@ -423,10 +477,18 @@ impl Ast {
         let token = self.tokens[self.i].clone();
         if token.raw == ";" {
             self. i += 1;
-            return Node::Return { value: None }
+            return Node {
+                ty: NodeType::Return { value: None },
+                row: token.row,
+                column: token.column
+            };
         }   
         match self.parse_expression(vec![";"]) {
-            Ok(expression) => return Node::Return { value: Some(expression) },
+            Ok(expression) => return Node {
+                ty: NodeType::Return { value: Some(expression) },
+                row: token.row,
+                column: token.column
+            },
             Err(error) => return error
         }
     }
@@ -435,11 +497,11 @@ impl Ast {
         let token = self.tokens[self.i].clone();
         self.i += 1;
         if token.raw != "(" {
-            return Node::Error {
-                ty: AstErrorType::ExpectedParenthesis,
+            return Node {
+                ty: NodeType::Error(AstErrorType::ExpectedParenthesis),
                 row: token.row,
                 column: token.column
-            }
+            };
         }
 
         match self.parse_boolean_expression(")") {
@@ -461,30 +523,38 @@ impl Ast {
                             if let TokenType::Punctuation(PunctuationKind::Open(bracket_number)) = body_open.ty {
 
                                 if body_open.raw == "{" {
-                                    return Node::IfElse {
-                                        condition: expression,
-                                        body,
-                                        else_body: self.parse_body(bracket_number)
-                                    }
+                                    return Node {
+                                        ty: NodeType::IfElse {
+                                            condition: expression,
+                                            body,
+                                            else_body: self.parse_body(bracket_number)
+                                        },
+                                        row: token.row,
+                                        column: token.column
+                                    };
                                 }
                             }
 
-                            return Node::Error {
-                                ty: AstErrorType::ExpectedBody,
+                            return Node {
+                                ty: NodeType::Error(AstErrorType::ExpectedBody),
                                 row: body_open.row,
                                 column: body_open.column
-                            }
+                            };
                         }
 
-                        return Node::If {
-                            condition: expression,
-                            body
-                        }
+                        return Node {
+                            ty: NodeType::If {
+                                condition: expression,
+                                body
+                            },
+                            row: token.row,
+                            column: token.column
+                        };
                     }
                 }
-                
-                return Node::Error {
-                    ty: AstErrorType::ExpectedBody,
+
+                return Node {
+                    ty: NodeType::Error(AstErrorType::ExpectedBody),
                     row: body_open.row,
                     column: body_open.column
                 };
@@ -497,11 +567,11 @@ impl Ast {
         let token = self.tokens[self.i].clone();
         self.i += 1;
         if token.raw != "(" {
-            return Node::Error {
-                ty: AstErrorType::ExpectedParenthesis,
+            return Node {
+                ty: NodeType::Error(AstErrorType::ExpectedParenthesis),
                 row: token.row,
                 column: token.column
-            }
+            };
         }
 
         match self.parse_boolean_expression(")") {
@@ -511,18 +581,22 @@ impl Ast {
                 if let TokenType::Punctuation(PunctuationKind::Open(bracket_number)) = body_open.ty {
 
                     if body_open.raw == "{" {
-                        return Node::While {
-                            condition: expression,
-                            body: self.parse_body(bracket_number)
-                        }
+                        return Node {
+                            ty: NodeType::While {
+                                condition: expression,
+                                body: self.parse_body(bracket_number)
+                            },
+                            row: body_open.row,
+                            column: body_open.column
+                        };
                     }
                 }
 
-                return Node::Error {
-                    ty: AstErrorType::ExpectedBody,
+                return Node {
+                    ty: NodeType::Error(AstErrorType::ExpectedBody),
                     row: body_open.row,
                     column: body_open.column
-                }
+                };
             },
             Err(error) => return error
         }
@@ -533,11 +607,11 @@ impl Ast {
         let token = self.tokens[self.i].clone();
         self.i += 1;
         if token.raw != "(" {
-            return Node::Error {
-                ty: AstErrorType::ExpectedParenthesis,
+            return Node {
+                ty: NodeType::Error(AstErrorType::ExpectedParenthesis),
                 row: token.row,
                 column: token.column
-            }
+            };
         }
 
         let variable_declaration: Option<Node>;
@@ -546,29 +620,32 @@ impl Ast {
 
         if token.raw == "let" {
             variable_declaration = Some(self.parse_variable_assignment(";", true));
-            match variable_declaration {
-                Some(Node::Error { .. }) => return variable_declaration.expect("Unreachable"),
+            match &variable_declaration {
+                Some(Node { ty, row: _, column: _ }) => match ty {
+                    NodeType::Error(_) => return variable_declaration.expect("Unreachable"),
+                    _ => {}
+                },
                 _ => {}
             }
         }
         else if token.raw == ";" { variable_declaration = None; }
         else {
-            return Node::Error {
-                ty: AstErrorType::SyntaxError,
+            return Node {
+                ty: NodeType::Error(AstErrorType::SyntaxError),
                 row: token.row,
                 column: token.column
-            }
+            };
         }
 
         let token = self.tokens[self.i].clone();
         let expression: Expression;
 
         if token.raw == ";" { 
-            return Node::Error {
-                ty: AstErrorType::ExpectedExpression,
+            return Node {
+                ty: NodeType::Error(AstErrorType::ExpectedExpression),
                 row: token.row,
                 column: token.column
-            }
+            };
         }
         else {
             match self.parse_boolean_expression(";") {
@@ -586,8 +663,11 @@ impl Ast {
         }
         else {
             loop_increment = Some(self.parse_variable_assignment(")", false));
-            match loop_increment {
-                Some(Node::Error { .. }) => { return loop_increment.expect("Unreachable"); }
+            match &loop_increment {
+                Some(Node { ty, row: _, column: _ }) => match ty {
+                    NodeType::Error(_) => return loop_increment.expect("Unreachable"),
+                    _ => {}
+                },
                 _ => {}
             }
         }
@@ -597,37 +677,43 @@ impl Ast {
         if let TokenType::Punctuation(PunctuationKind::Open(bracket_number)) = body_open.ty {
 
             if body_open.raw == "{" {
-                return Node::For {
-                    variable: Box::new(variable_declaration),
-                    condition: expression,
-                    loop_increment: Box::new(loop_increment),
-                    body: self.parse_body(bracket_number)
-                }
+                return Node {
+                    ty: NodeType::For {
+                        variable: Box::new(variable_declaration),
+                        condition: expression,
+                        loop_increment: Box::new(loop_increment),
+                        body: self.parse_body(bracket_number)
+                    },
+                    row: body_open.row,
+                    column: body_open.column
+                };
             }
         }
 
-        return Node::Error {
-            ty: AstErrorType::ExpectedBody,
+        return Node {
+            ty: NodeType::Error(AstErrorType::ExpectedBody),
             row: body_open.row,
             column: body_open.column
-        }
+        };
     }
 
     fn parse_out_keyword(&mut self) -> Node {
-        let token = &self.tokens[self.i];
+        let token = self.tokens[self.i].clone();
         self.i += 1;
 
         if token.raw != "(" {
-            return Node::Error {
-                ty: AstErrorType::ExpectedParenthesis,
+            return Node {
+                ty: NodeType::Error(AstErrorType::ExpectedParenthesis),
                 row: token.row,
                 column: token.column
             };
         }
 
         let node = match self.parse_expression(vec![")"]) {
-            Ok(value) => Node::Out {
-                value
+            Ok(value) => Node {
+                ty: NodeType::Out { value },
+                row: token.row,
+                column: token.column
             },
             Err(error) => return error
         };
@@ -636,11 +722,11 @@ impl Ast {
         self.i += 1;
 
         if token.raw != ";" {
-            return Node::Error {
-                ty: AstErrorType::ExpectedEndOfLine,
+            return Node {
+                ty: NodeType::Error(AstErrorType::ExpectedEndOfLine),
                 row: token.row,
                 column: token.column
-            }
+            };
         }
 
         return node;
@@ -653,8 +739,8 @@ impl Ast {
         self.i += 1;
 
         if token.ty != TokenType::Identifier {
-            return Some(Node::Error {
-                ty: AstErrorType::ExpectedIdentifier,
+            return Some(Node {
+                ty: NodeType::Error(AstErrorType::ExpectedIdentifier),
                 row: token.row,
                 column: token.column
             });
@@ -674,8 +760,8 @@ impl Ast {
             }
         };
 
-        match ret {
-            Node::Error { .. } => self.skip_line(),
+        match ret.ty {
+            NodeType::Error { .. } => self.skip_line(),
             _ => {}
         };
 
@@ -693,9 +779,9 @@ impl Ast {
 }
 
 fn convert_expression_to_string(expression: &Expression) -> String {
-    return match expression {
-        Expression::Value(value) => format!("{} ", value.clone()),
-        Expression::Function(identifier, arguments) => {
+    return match &expression.ty {
+        ExpressionType::Value(value) => format!("{} ", value.clone()),
+        ExpressionType::Function(identifier, arguments) => {
 
             let mut out = format!("{}(", identifier);
             for (i, argument) in arguments.iter().enumerate() {
@@ -705,15 +791,15 @@ fn convert_expression_to_string(expression: &Expression) -> String {
             }
             out
         },
-        Expression::Operator ( operator ) => format!("{} ", operator.clone()),
-        Expression::Block(block) => {
+        ExpressionType::Operator ( operator ) => format!("{} ", operator.clone()),
+        ExpressionType::Block(block) => {
             let mut out = String::new();
             for expression in block {
                 out.push_str(&convert_expression_to_string(expression).as_str());
             }
             out
         },
-        Expression::ParenthesisOpen(_) | Expression::ParenthesisClose(_) => panic!("Unreachable"),
+        ExpressionType::ParenthesisOpen(_) | ExpressionType::ParenthesisClose(_) => panic!("Unreachable"),
     }
 }
 
@@ -745,40 +831,40 @@ impl std::fmt::Display for AstErrorType {
 }
 
 fn convert_node_to_string(node: &Node, inc: usize) -> String {
-    return match node {
-        Node::VariableAssignment { identifier, value } => format!("{}Variable assignment: {} = {}\n", "\t".to_string().repeat(inc), identifier, value),
-        Node::VariableDeclaration { identifier, value } => format!("{}Variable assignment: {} = {}\n", "\t".to_string().repeat(inc), identifier, value),
-        Node::Error { ty, row, column } => format!("{}Error: {} on line {}, column: {}", "\t".to_string().repeat(inc), ty, row, column),
-        Node::Return { value } => {
+    return match &node.ty {
+        NodeType::VariableAssignment { identifier, value } => format!("{}Variable assignment: {} = {}\n", "\t".to_string().repeat(inc), identifier, value),
+        NodeType::VariableDeclaration { identifier, value } => format!("{}Variable assignment: {} = {}\n", "\t".to_string().repeat(inc), identifier, value),
+        NodeType::Error(ty) => format!("{}Error: {} on line {}, column: {}", "\t".to_string().repeat(inc), ty, node.row, node.column),
+        NodeType::Return { value } => {
             if let Some(value) = value { format!("{}Return {}\n", "\t".to_string().repeat(inc), value) }
             else { format!("{}Return\n", "\t".to_string().repeat(inc)) }
         },
-        Node::If { condition, body } => {
+        NodeType::If { condition, body } => {
             let mut out = format!("{}If: Condition: {}\n", "\t".to_string().repeat(inc), condition);
             for part in body {
-                out.push_str(format!("{}", convert_node_to_string(part, inc + 1)).as_str());
+                out.push_str(format!("{}", convert_node_to_string(&part, inc + 1)).as_str());
             }
             out
         },
-        Node::IfElse { condition, body, else_body } => {
+        NodeType::IfElse { condition, body, else_body } => {
             let mut out = format!("{}If: Condition {}\n", "\t".to_string().repeat(inc), condition);
             for part in body {
-                out.push_str(format!("{}", convert_node_to_string(part, inc + 1)).as_str());
+                out.push_str(format!("{}", convert_node_to_string(&part, inc + 1)).as_str());
             }
             out.push_str(format!("{}Else:\n", "\t".to_string().repeat(inc)).as_str());
             for part in else_body {
-                out.push_str(format!("{}", convert_node_to_string(part, inc + 1)).as_str());
+                out.push_str(format!("{}", convert_node_to_string(&part, inc + 1)).as_str());
             }
             out
         },
-        Node::While { condition, body } => {
+        NodeType::While { condition, body } => {
             let mut out = format!("{}While: Condition: {}\n", "\t".to_string().repeat(inc), condition);
             for part in body {
-                out.push_str(format!("{}", convert_node_to_string(part, inc + 1)).as_str());
+                out.push_str(format!("{}", convert_node_to_string(&part, inc + 1)).as_str());
             }
             out
         },
-        Node::For { variable, condition, loop_increment, body } => {
+        NodeType::For { variable, condition, loop_increment, body } => {
 
             let mut variable_out = match &**variable {
                 Some(variable) => format!("{}", variable),
@@ -792,22 +878,22 @@ fn convert_node_to_string(node: &Node, inc: usize) -> String {
             loop_increment_out.pop();
             let mut out = format!("{}For: {}, Condition: {}, Loop increment: {}\n", "\t".to_string().repeat(inc), variable_out, condition, loop_increment_out);
             for part in body {
-                out.push_str(format!("{}", convert_node_to_string(part, inc + 1)).as_str());
+                out.push_str(format!("{}", convert_node_to_string(&part, inc + 1)).as_str());
             }
             out
         },
-        Node::Function { identifier, arguments, body } => {
+        NodeType::Function { identifier, arguments, body } => {
             let mut out = format!("{}Function: {}, Arguments: (", "\t".to_string().repeat(inc), identifier);
             for (i, argument) in arguments.iter().enumerate() {
                 if i != arguments.len() - 1 { out.push_str(format!("{}, ", argument).as_str()); }
                 else { out.push_str(format!("{})\n", argument).as_str()); }
             }
             for part in body {
-                out.push_str(format!("{}", convert_node_to_string(part, inc + 1)).as_str());
+                out.push_str(format!("{}", convert_node_to_string(&part, inc + 1)).as_str());
             }
             out
         },
-        Node::Out { value } => format!("{}Out: {}\n", "\t".to_string().repeat(inc), value)
+        NodeType::Out { value } => format!("{}Out: {}\n", "\t".to_string().repeat(inc), value)
     }
 }
 

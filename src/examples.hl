@@ -24,7 +24,7 @@ fn main() {
         linear_fib = next;
     }
     out(linear_fib);
-
+    
     // Always true if code works correctly
     if (recursive_fib == linear_fib) {
         let num = recursive(1, 10000);

@@ -6,25 +6,25 @@ mod semantics;
 use std::collections::HashMap;
 
 use lexer::{Lexer, LexerErrorType, Token, TokenType};
-use ast::{Ast, Node};
+use ast::{Ast, Node, NodeType};
 use semantics::SemanticAnalysis;
 use gen::gen::Gen;
 
 fn find_ast_errors(nodes: Vec<Node>) -> Vec<Node> {
     let mut errors = vec![];
     for node in nodes {
-        errors.append(&mut match node {
-            Node::For { variable: _, condition: _, loop_increment: _, body } => find_ast_errors(body),
-            Node::Function { identifier: _, arguments: _, body } => find_ast_errors(body),
-            Node::If { condition: _, body } => find_ast_errors(body),
-            Node::IfElse { condition: _, body, else_body } => {
+        errors.append(&mut match node.ty {
+            NodeType::For { variable: _, condition: _, loop_increment: _, body } => find_ast_errors(body),
+            NodeType::Function { identifier: _, arguments: _, body } => find_ast_errors(body),
+            NodeType::If { condition: _, body } => find_ast_errors(body),
+            NodeType::IfElse { condition: _, body, else_body } => {
                 let mut out = find_ast_errors(body);
                 out.append(&mut find_ast_errors(else_body));
                 out
             },
-            Node::While { condition: _, body } => find_ast_errors(body),
-            Node::Out { .. } | Node::Return { .. } | Node::VariableAssignment { .. } | Node::VariableDeclaration { .. } => vec![],
-            Node::Error { .. } => vec![node]
+            NodeType::While { condition: _, body } => find_ast_errors(body),
+            NodeType::Out { .. } | NodeType::Return { .. } | NodeType::VariableAssignment { .. } | NodeType::VariableDeclaration { .. } => vec![],
+            NodeType::Error { .. } => vec![node]
         });
     }
     errors
@@ -67,8 +67,8 @@ pub fn compile_hl(code: &str) -> String {
     }
 
     let mut functions = HashMap::new();
-    for node in &ast_tree { match node {
-        Node::Function { identifier, arguments, body: _ } => { functions.insert(identifier.clone(), arguments.clone()); },
+    for node in &ast_tree { match &node.ty {
+        NodeType::Function { identifier, arguments, body: _ } => { functions.insert(identifier.clone(), arguments.clone()); },
         _ => {}
     }}
 

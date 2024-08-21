@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ast::{Expression, Node};
+use crate::ast::{Expression, ExpressionType, Node, NodeType};
 use crate::gen::ram::Ram;
 
 pub struct Gen {
@@ -32,8 +32,8 @@ impl Gen {
 
         let ram_location = self.ram.allocate_next(&ram_identifier.to_string());
 
-        match expression {
-            Expression::Value(value) => {
+        match expression.ty {
+            ExpressionType::Value(value) => {
                 if value.chars().nth(0).expect("Unreachable").is_numeric() {
                     return format!("mov {} r0\nsram {}\n", ram_location, value.parse::<isize>().expect("Unreachable") as usize);
                 }
@@ -42,11 +42,11 @@ impl Gen {
                 }
                 panic!("Non initialized variable: {}", value);
             },
-            Expression::Function(identifier, arguments) => {
+            ExpressionType::Function(identifier, arguments) => {
                 let function_call_asm = self.parse_function_call(&identifier, &arguments, ram_identifier + 1);
                 return format!("{}mov 0 r0\nlram r3\nmov {} r0\nsram r3\n", function_call_asm, ram_location);
             },
-            Expression::Block(block) => {   
+            ExpressionType::Block(block) => {   
 
                 let mut out = format!("mov {} r0\nsram 0\n", ram_location);
                 let mut i = 0;
@@ -56,7 +56,7 @@ impl Gen {
                     if i == 0 { operator = "add"; }
                     else {
                         let operator_raw: String;
-                        if let Expression::Operator(operator) = &block[i] { operator_raw = operator.clone(); }
+                        if let ExpressionType::Operator(operator) = &block[i].ty { operator_raw = operator.clone(); }
                         else { panic!("Unreachable"); }
                         operator = match operator_raw.as_str() {
                             "+" => "add",
@@ -89,7 +89,7 @@ impl Gen {
                 }
                 return out;
             },      
-            Expression::ParenthesisClose(_) | Expression::ParenthesisOpen(_) | Expression::Operator(_) => panic!("Unreachable")
+            ExpressionType::ParenthesisClose(_) | ExpressionType::ParenthesisOpen(_) | ExpressionType::Operator(_) => panic!("Unreachable")
         };
     }
 
@@ -177,15 +177,15 @@ impl Gen {
         self.current_label += 2;
         let variable_asm: String;
 
-        if let Some(variable_assinment) = &**variable { match variable_assinment {
-            Node::VariableDeclaration { identifier, value } => variable_asm = self.parse_variable_assignment(identifier, value),
+        if let Some(variable_assinment) = &**variable { match &variable_assinment.ty {
+            NodeType::VariableDeclaration { identifier, value } => variable_asm = self.parse_variable_assignment(identifier, value),
             _ => panic!("Unreachable")
         }}
         else { variable_asm = String::new(); }
 
         let mut body_asm = self.parse_body(body, jump_to.to_string(), Some(jump_back.to_string()));
-        if let Some(loop_increment) = &**loop_increment { match loop_increment {
-            Node::VariableAssignment { identifier, value } => {
+        if let Some(loop_increment) = &**loop_increment { match &loop_increment.ty {
+            NodeType::VariableAssignment { identifier, value } => {
 
                 let mut i = body_asm.len();
                 let mut chars = body_asm.chars().rev();
@@ -285,17 +285,17 @@ impl Gen {
 
     fn parse_node(&mut self, node: &Node) -> String {
         
-        return match node {
-            Node::VariableAssignment { identifier, value } => self.parse_variable_assignment(identifier, value),
-            Node::VariableDeclaration { identifier, value } => self.parse_variable_assignment(identifier, value),
-            Node::If { condition, body } => self.parse_if_statement(condition, body, None),
-            Node::IfElse { condition, body, else_body } => self.parse_if_statement(condition, body, Some(else_body)),
-            Node::While { condition, body } => self.parse_while_loop(condition, body),
-            Node::For { variable, condition, loop_increment, body } => self.parse_for_loop(variable, condition, loop_increment, body),
-            Node::Function { identifier, arguments: _, body } => self.parse_function_definition(identifier, body),
-            Node::Return { value } => self.parse_return(value),
-            Node::Out { value } => self.parse_out_call(value),
-            Node::Error { .. } => panic!("Unreachable")
+        return match &node.ty {
+            NodeType::VariableAssignment { identifier, value } => self.parse_variable_assignment(identifier, value),
+            NodeType::VariableDeclaration { identifier, value } => self.parse_variable_assignment(identifier, value),
+            NodeType::If { condition, body } => self.parse_if_statement(condition, body, None),
+            NodeType::IfElse { condition, body, else_body } => self.parse_if_statement(condition, body, Some(else_body)),
+            NodeType::While { condition, body } => self.parse_while_loop(condition, body),
+            NodeType::For { variable, condition, loop_increment, body } => self.parse_for_loop(variable, condition, loop_increment, body),
+            NodeType::Function { identifier, arguments: _, body } => self.parse_function_definition(identifier, body),
+            NodeType::Return { value } => self.parse_return(value),
+            NodeType::Out { value } => self.parse_out_call(value),
+            NodeType::Error { .. } => panic!("Unreachable")
         }
     }
 
