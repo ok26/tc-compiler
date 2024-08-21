@@ -8,24 +8,18 @@ pub struct Gen {
     ram: Ram,
     current_label: usize,
     current_function: String,
-    function_arguments: HashMap<String, Vec<String>>,
+    functions: HashMap<String, Vec<String>>,
     asm: String
 }
 
 impl Gen {
-    pub fn new(ast: Vec<Node>) -> Gen {
-
-        let mut function_arguments = HashMap::new();
-        for node in ast.clone() { match node {
-            Node::Function { identifier, arguments, body: _ } => { function_arguments.insert(identifier, arguments); },
-            _ => {}
-        }}
+    pub fn new(ast: Vec<Node>, functions: HashMap<String, Vec<String>>) -> Gen {
         Gen {
             ast,
             ram: Ram::new(4096),
             current_label: 0,
             current_function: String::new(),
-            function_arguments,
+            functions,
             asm: String::new()
         }
     }
@@ -224,7 +218,7 @@ impl Gen {
         let mut out = format!("f{}:\n", identifier);
 
         self.current_function = identifier.clone();
-        for argument in self.function_arguments.get(&self.current_function).expect("Unreachable") {
+        for argument in self.functions.get(&self.current_function).expect("Unreachable") {
             self.ram.allocate_next(&self.get_ram_identifier(argument));
         }
 
@@ -249,7 +243,7 @@ impl Gen {
             out.push_str(format!("mov {} r0\nlram r1\npush r1\n", arg_ram_location).as_str());
         }
 
-        let function_arguments = self.function_arguments.get(identifier).expect("Unreachable").clone();
+        let function_arguments = self.functions.get(identifier).expect("Unreachable").clone();
         for (i, argument) in arguments.iter().enumerate() {
 
             let expression_asm = self.parse_expression(argument.clone(), ram_identifier);

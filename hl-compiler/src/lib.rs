@@ -3,6 +3,8 @@ mod ast;
 mod gen;
 mod semantics;
 
+use std::collections::HashMap;
+
 use lexer::{Lexer, LexerErrorType, Token, TokenType};
 use ast::{Ast, Node};
 use semantics::SemanticAnalysis;
@@ -64,7 +66,13 @@ pub fn compile_hl(code: &str) -> String {
         return String::new();
     }
 
-    let mut sem_analysis = SemanticAnalysis::new();
+    let mut functions = HashMap::new();
+    for node in &ast_tree { match node {
+        Node::Function { identifier, arguments, body: _ } => { functions.insert(identifier.clone(), arguments.clone()); },
+        _ => {}
+    }}
+
+    let mut sem_analysis = SemanticAnalysis::new(functions.clone());
     let semantic_errors = sem_analysis.analyse(&ast_tree);
 
     if semantic_errors.len() != 0 {
@@ -74,6 +82,6 @@ pub fn compile_hl(code: &str) -> String {
         return String::new();
     }
 
-    let mut asm_gen = Gen::new(ast_tree);
+    let mut asm_gen = Gen::new(ast_tree, functions);
     asm_gen.generate_asm()
 }

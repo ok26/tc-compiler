@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::ast::{Expression, Node};
 
@@ -6,22 +6,24 @@ use crate::ast::{Expression, Node};
 pub enum SemanticsError {
     UnwrappedCode,
     FunctionDefinitionInFunction,
+    MissingMainFunction,
     FunctionDefinedTwice(String),
     UninitializedVariable(String),
     UninitializedFunction(String),
+    IncorrectFunctionArguments(String, usize, usize)
 }
 
 pub struct SemanticAnalysis {
     vars_in_scope: HashSet<String>,
-    functions_in_scope: HashSet<String>,
+    functions: HashMap<String, Vec<String>>,
     errors: Vec<SemanticsError>
 }
 
 impl SemanticAnalysis {
-    pub fn new() -> SemanticAnalysis {
+    pub fn new(functions: HashMap<String, Vec<String>>) -> SemanticAnalysis {
         SemanticAnalysis {
             vars_in_scope: HashSet::new(),
-            functions_in_scope: HashSet::new(),
+            functions,
             errors: vec![]
         }
     }
@@ -66,8 +68,13 @@ impl SemanticAnalysis {
                     self.errors.push(SemanticsError::UninitializedVariable(value));
                 }
             },
-            Expression::Function(identifier, _) => {
-                if !self.functions_in_scope.contains(&identifier) {
+            Expression::Function(identifier, arguments) => {
+                if let Some(expected_arguments) = self.functions.get(&identifier) {
+                    if expected_arguments.len() != arguments.len() {
+                        self.errors.push(SemanticsError::IncorrectFunctionArguments(identifier, expected_arguments.len(), arguments.len()));
+                    }
+                }
+                else {  
                     self.errors.push(SemanticsError::UninitializedFunction(identifier));
                 }
             },
@@ -120,24 +127,22 @@ impl SemanticAnalysis {
     }
     
     pub fn analyse(&mut self, nodes: &Vec<Node>) -> Vec<SemanticsError> {
-    
-        for node in nodes {
-            match node {
-                Node::Function { identifier, arguments: _, body: _ } => {
-                    let ret = self.functions_in_scope.insert(identifier.clone());
 
-                    // Function has already been defined
-                    if !ret {
-                        self.errors.push(SemanticsError::FunctionDefinedTwice(identifier.clone()));
-                    }
-                },
-                _ => {}
-            };
+        if !self.functions.contains_key(&"main".to_string()) {
+            self.errors.push(SemanticsError::MissingMainFunction);
         }
 
+        // Check for duplicates
+        let mut functions = HashSet::new();
+        
         for node in nodes {
             match node {
-                Node::Function { identifier: _, arguments, body } => {
+                Node::Function { identifier, arguments, body } => {
+
+                    if !functions.insert(identifier) {
+                        self.errors.push(SemanticsError::FunctionDefinedTwice(identifier.clone()));
+                    }
+
                     for argument in arguments {
                         self.vars_in_scope.insert(argument.clone());
                     }
@@ -157,10 +162,13 @@ impl std::fmt::Display for SemanticsError {
 
         let out = match self {
             SemanticsError::UnwrappedCode => "Unwrapped Code".to_string(),
-            SemanticsError::FunctionDefinedTwice(identifier) => format!("Function: {} defined twice", identifier),
+            SemanticsError::FunctionDefinedTwice(identifier) => format!("Function: '{}' defined twice", identifier),
             SemanticsError::FunctionDefinitionInFunction => "Function definitions are not allowed within funcitons".to_string(),
             SemanticsError::UninitializedFunction(identifier) => format!("Uninitialized function: {}", identifier),
-            SemanticsError::UninitializedVariable(identifier) => format!("Uninitialized variable: {}", identifier)
+            SemanticsError::UninitializedVariable(identifier) => format!("Uninitialized variable: {}", identifier),
+            SemanticsError::MissingMainFunction => "Missing main function".to_string(),
+            SemanticsError::IncorrectFunctionArguments(identifier, expected_args, args) => 
+                format!("Function: '{}' expected {} arguments but only received {}", identifier, expected_args, args)
         };
         write!(f, "{}", out)
     }
