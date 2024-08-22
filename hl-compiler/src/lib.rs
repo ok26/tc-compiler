@@ -2,11 +2,12 @@ mod lexer;
 mod ast;
 mod gen;
 mod semantics;
+mod utils;
 
 use std::collections::HashMap;
 
 use lexer::{Lexer, LexerErrorType, Token, TokenType};
-use ast::{Ast, Node, NodeType};
+use ast::{ast::{Node, NodeType}, generate_ast};
 use semantics::SemanticAnalysis;
 use gen::gen::Gen;
 
@@ -55,8 +56,7 @@ pub fn compile_hl(code: &str) -> String {
         return String::new();
     }
 
-    let mut ast = Ast::new(tokens);
-    let ast_tree = ast.generate_ast();
+    let ast_tree = generate_ast(tokens);
     let ast_errors = find_ast_errors(ast_tree.clone());
 
     if ast_errors.len() != 0 {

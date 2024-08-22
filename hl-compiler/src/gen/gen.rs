@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ast::{Expression, ExpressionType, Node, NodeType};
+use crate::ast::{expressions::{Expression, ExpressionType}, ast::{Node, NodeType}};
 use crate::gen::ram::Ram;
 
 pub struct Gen {

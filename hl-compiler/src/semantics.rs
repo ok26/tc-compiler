@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::ast::{Expression, ExpressionType, Node, NodeType};
+use crate::ast::{expressions::{Expression, ExpressionType}, ast::{Node, NodeType}};
 
 #[derive(Clone)]
 pub enum SemanticsErrorType {
