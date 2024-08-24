@@ -56,6 +56,14 @@ fn main() {
     for (;sum < 1000; sum = sum + 1) {}
     out(sum); // 1000
 
+    sum = 0;
+    let inc = 1;
+    while (sum < 100000) {
+        sum = sum + inc;
+        inc = 2 * inc;
+    }
+    out(sum); // 131071
+
 
     // Expression tests
     let test1 = 30 - (20 + 2) * 18;
