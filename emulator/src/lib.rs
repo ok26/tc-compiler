@@ -98,20 +98,20 @@ impl Emulator {
             }
             else {
 
-                let arg1: u32;
+                let arg1: i32;
                 if instruction & (1 << 31) != 0 {
-                    arg1 = script[i + 1];
+                    arg1 = script[i + 1] as i32;
                 }
                 else {
-                    arg1 = self.reg[script[i + 1] as usize];
+                    arg1 = self.reg[script[i + 1] as usize] as i32;
                 }
 
-                let arg2: u32;
+                let arg2: i32;
                 if instruction & (1 << 30) != 0 {
-                    arg2 = script[i + 2];
+                    arg2 = script[i + 2] as i32;
                 }
                 else {
-                    arg2 = self.reg[script[i + 2] as usize];
+                    arg2 = self.reg[script[i + 2] as usize] as i32;
                 }
 
                 let result = match instruction % 32 {
@@ -123,6 +123,7 @@ impl Emulator {
                     5 => arg1 ^ arg2,
                     6 => arg1 << arg2,
                     7 => arg1 >> arg2,
+                    8 => arg1.wrapping_mul(arg2),
                     _ => panic!("Unreachable")
                 };
 
@@ -130,7 +131,7 @@ impl Emulator {
                     println!("{}", result);
                 }
                 else {
-                    self.reg[script[i + 3] as usize] = result;
+                    self.reg[script[i + 3] as usize] = result as u32;
                 }
             }
             i += 4;

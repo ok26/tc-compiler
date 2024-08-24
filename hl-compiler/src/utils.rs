@@ -7,7 +7,7 @@ pub fn is_reserved_keyword(keyword: &String) -> bool {
 
 pub fn is_int_operator(operator: &String) -> bool {
     match operator.as_str() {
-        "+" | "-" | "&" | "|" | "^" | "<<" | ">>" => return true,
+        "+" | "-" | "*" | "&" | "|" | "^" | "<<" | ">>" => return true,
         _ => return false
     };
 }

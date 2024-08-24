@@ -16,6 +16,7 @@
 // 5 -> Xor
 // 6 -> Shift bits left
 // 7 -> Shift bits right
+// 8 -> Mul
 //
 // Bit 8 set means Condition operation with the following exact operations:
 // 0 -> Equal
@@ -69,9 +70,9 @@ pub fn gen_instructions(tokens: Vec<Token>) -> Vec<u32> {
             TokenType::Label(label) => { label_locations.insert(label.clone(), current_op); i += 1; },
             TokenType::Reg(_) | TokenType::Value(_) => panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column),
 
-            TokenType::Add | TokenType::Sub | TokenType::And | TokenType::Or | TokenType::Xor | TokenType::Shl | TokenType::Shr |
+            TokenType::Add | TokenType::Sub | TokenType::Mul | TokenType::And | TokenType::Or | TokenType::Xor | TokenType::Shl | TokenType::Shr |
             TokenType::Eq | TokenType::NotEq | TokenType::Less | TokenType::LessEq | TokenType::Greater | TokenType::GreaterEq |
-            TokenType::Jeq | TokenType::Jneq | TokenType::Jl | TokenType::Jg | TokenType::Jge | TokenType::Jle => {
+            TokenType::Jeq | TokenType::Jneq | TokenType::Jl | TokenType::Jg | TokenType::Jge | TokenType::Jle=> {
 
                 if i + 3 >= tokens.len() { panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column) }
                 
@@ -83,6 +84,7 @@ pub fn gen_instructions(tokens: Vec<Token>) -> Vec<u32> {
                     TokenType::Xor => 5,
                     TokenType::Shl => 6,
                     TokenType::Shr => 7,
+                    TokenType::Mul => 8,
                     TokenType::Eq | TokenType::Jeq => 1 << 8,
                     TokenType::NotEq | TokenType::Jneq => (1 << 8) + 1,
                     TokenType::Less | TokenType::Jl => (1 << 8) + 2,

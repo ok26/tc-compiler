@@ -61,6 +61,7 @@ impl Gen {
                         operator = match operator_raw.as_str() {
                             "+" => "add",
                             "-" => "sub",
+                            "*" => "mul",
                             "&" => "and",
                             "|" => "or",
                             "^" => "xor",

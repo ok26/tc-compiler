@@ -59,6 +59,65 @@ pub fn parse_boolean_expression(tokens: &Vec<Token>, i: &mut usize, terminator: 
     }
 }
 
+// Only multiplication so far
+fn compress_mul_blocks(expression_block: Vec<Expression>) -> Vec<Expression> {
+    let mut new_block: Vec<Expression> = vec![];
+    let mut i = 0;
+    while i < expression_block.len() {
+        
+        let expression = &expression_block[i];
+        match &expression.ty {
+            ExpressionType::Operator(raw) => {
+
+                if raw != "*" {
+                    new_block.push(expression.clone());
+                    i += 1;
+                    continue;
+                }
+    
+                new_block.pop();
+                i -= 1;
+    
+                // Compress expression block
+                let mut compressed_block: Vec<Expression> = vec![];
+                loop {
+                    if i == expression_block.len() {
+                        new_block.push(Expression {
+                            ty: ExpressionType::Block(compressed_block),
+                            row: 0,
+                            column: 0
+                        });
+                        break;
+                    }
+    
+                    let expression = &expression_block[i];
+                    if let ExpressionType::Operator(raw) = &expression.ty { if raw != "*" { 
+                        new_block.push(Expression {
+                            ty: ExpressionType::Block(compressed_block),
+                            row: 0,
+                            column: 0
+                        });
+                        new_block.push(expression.clone()); 
+                        break;
+                    }}
+                    compressed_block.push(expression.clone());
+                    i += 1;
+                }
+            },
+            ExpressionType::Block(block) => {
+                new_block.push(Expression {
+                    ty: ExpressionType::Block(compress_mul_blocks(block.clone())),
+                    row: 0,
+                    column: 0
+                });
+            },
+            _ => new_block.push(expression.clone())
+        }
+        i += 1;
+    }
+    new_block
+}
+
 pub fn parse_expression(tokens: &Vec<Token>, i: &mut usize, terminators: Vec<&str>) -> Result<Expression, Node> {
     let mut expression_block: Vec<Expression> = vec![];
     let mut parenthesis_number = 0;
@@ -188,28 +247,28 @@ pub fn parse_expression(tokens: &Vec<Token>, i: &mut usize, terminators: Vec<&st
 
                 if number != parenthesis_number {
                     new_block.push(expression.clone());
-                    i = i + 1;
+                    i += 1;
                     continue;
                 }
 
                 // Compress expression block
                 let mut compressed_block: Vec<Expression> = vec![];
-                i = i + 1;
+                i += 1;
                 loop {
                     let expression = &expression_block[i];
                     if let ExpressionType::ParenthesisClose(number) = expression.ty { if number == parenthesis_number { break; } }
                     compressed_block.push(expression.clone());
-                    i = i + 1;
+                    i += 1;
                 }
                 new_block.push(Expression {
                     ty: ExpressionType::Block(compressed_block),
-                    row: 0, // This will never really be read
-                    column: 0 // Same here
+                    row: 0,
+                    column: 0
                 });
             }
             else { new_block.push(expression.clone()); }
 
-            i = i + 1;
+            i += 1;
         }
         expression_block = new_block;
 
@@ -217,10 +276,8 @@ pub fn parse_expression(tokens: &Vec<Token>, i: &mut usize, terminators: Vec<&st
         parenthesis_number -= 1;
     }
 
-    // Easy to add more hierarchy for operations and not just parenthesis in future
-
     Ok(Expression {
-        ty: ExpressionType::Block(expression_block),
+        ty: ExpressionType::Block(compress_mul_blocks(expression_block)),
         row: 0,
         column: 0
     })

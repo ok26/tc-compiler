@@ -1,0 +1,69 @@
+// Recursive fibonacci implementation
+fn fib(n) {
+    if (n < 2) {
+        return n;
+    }
+    return fib(n - 1) + fib(n - 2);
+}
+
+// Recursive binary search to find square root of n
+fn sqrt(low, high, n) {
+    if (low > high) {
+        return high;
+    }
+
+    // Division is not supported
+    let mid = (low + high) >> 2;
+
+    if (mid * mid == n) {
+        return mid;
+    }
+    if (mid * mid < n) {
+        return sqrt(mid + 1, high, n);
+    }
+    else {
+        return sqrt(low, mid - 1, n);
+    }
+}
+
+fn main() {
+
+    // Recursive tests
+    let recursive_fib = fib(20);
+    out(recursive_fib); // 6765
+
+    let sqrt_result = sqrt(0, 37651, 37651);
+    out(sqrt_result); // 194
+
+    
+    // Loop tests
+    let sum = 0;
+    for (let i = 0; i < 3; i = i + 1) {
+        for (let j = 0; j < 3; j = j + 1) {
+            sum = sum + i + j;
+        }
+    }
+    out(sum); // 18
+
+    sum = 0;
+    for (let i = 2; i < 10000;) {
+        sum = sum + i;
+        i = i * i;
+    }
+    out(sum); // 278
+
+    sum = 0;
+    for (;sum < 1000; sum = sum + 1) {}
+    out(sum); // 1000
+
+
+    // Expression tests
+    let test1 = 30 - (20 + 2) * 18;
+    out(test1); // -366
+    
+    let test2 = (test1 - fib(6) + fib(10) * 12) >> 3;
+    out(test2); // 35
+
+    let test3 = (31 & 1015) << (8 | 24);
+    out(test3); // 385875968
+}

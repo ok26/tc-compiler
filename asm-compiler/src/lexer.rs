@@ -9,6 +9,7 @@ pub struct Token {
 pub enum TokenType {
     Add,
     Sub,
+    Mul,
     And,
     Or,
     Not,
@@ -79,6 +80,7 @@ pub fn tokenize(code: String) -> Vec<Token> {
             let token_type = match word {
                 "add" => TokenType::Add,
                 "sub" => TokenType::Sub,
+                "mul" => TokenType::Mul,
                 "and" => TokenType::And,
                 "or" => TokenType::Or,
                 "not" => TokenType::Not,
