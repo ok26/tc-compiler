@@ -207,7 +207,7 @@ impl std::fmt::Display for SemanticsError {
             SemanticsErrorType::UninitializedVariable(identifier) => format!("Uninitialized variable: {}", identifier),
             SemanticsErrorType::MissingMainFunction => "Missing main function".to_string(),
             SemanticsErrorType::IncorrectFunctionArguments(identifier, expected_args, args) => 
-                format!("Function: '{}' expected {} arguments but only received {}", identifier, expected_args, args)
+                format!("Function: '{}' expected {} arguments but received {}", identifier, expected_args, args)
         };
         write!(f, "{} on line {}, column: {}", out, self.row, self.column)
     }
