@@ -10,8 +10,10 @@ impl Ram {
     pub fn new(size: usize) -> Ram {
         let mut allocated_memory = vec![false; size];
         allocated_memory[0] = true;
+        let mut variables = HashMap::new();
+        variables.insert("return".to_string(), 0);
         Ram {
-            variables: HashMap::new(),
+            variables,
             allocated_memory,
             size
         }
