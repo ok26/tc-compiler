@@ -71,7 +71,7 @@ impl SemanticAnalysis {
     fn analyse_expression(&mut self, expression: Expression) {
         match expression.ty {
             ExpressionType::Value(value) => {
-                if !value.chars().nth(0).expect("Unreachable").is_numeric() && !self.vars_in_scope.contains(&value) {
+                if !value.chars().nth(0).unwrap().is_numeric() && !self.vars_in_scope.contains(&value) {
                     self.errors.push(SemanticsError {
                         ty: SemanticsErrorType::UninitializedVariable(value),
                         row: expression.row,

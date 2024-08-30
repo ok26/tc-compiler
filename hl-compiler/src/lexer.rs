@@ -164,7 +164,7 @@ impl<'a> Lexer<'a> {
 
     fn parse_punctuation(&mut self) -> Result<Token, LexerError> {
         
-        let c = self.chars.next().expect("Unreachable");
+        let c = self.chars.next().unwrap();
         self.column += 1;
         if Lexer::is_seperator(c) {
             return Ok(Token {

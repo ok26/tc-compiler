@@ -54,11 +54,11 @@ impl ExpressionGen {
         let prefix = if *current_function == identifier.clone() { identifier.clone() } else { "-".to_string() };
         let local_variables = ram.get_local_variables(&prefix);
         for variable in &local_variables {
-            let arg_ram_location = ram.get(variable).expect("Unreachable");
+            let arg_ram_location = ram.get(variable).unwrap();
             out.push_str(format!("mov {} r0\nlram r1\npush r1\n", arg_ram_location).as_str());
         }
 
-        let function_arguments = functions.get(identifier).expect("Unreachable").clone();
+        let function_arguments = functions.get(identifier).unwrap().clone();
         for (i, argument) in arguments.iter().enumerate() {
 
             let expression_asm: String;
@@ -86,8 +86,8 @@ impl ExpressionGen {
 
         match &expression.ty {
             ExpressionType::Value(value) => {
-                if value.chars().nth(0).expect("Unreachable").is_numeric() {
-                    return format!("mov {} r0\nsram {}\n", ram_location, value.parse::<isize>().expect("Unreachable") as usize);
+                if value.chars().nth(0).unwrap().is_numeric() {
+                    return format!("mov {} r0\nsram {}\n", ram_location, value.parse::<isize>().unwrap() as usize);
                 }
                 if let Some(variable_ram_location) = ram.get(&get_ram_identifier(current_function, &value)) {
                     return format!("mov {} r0\nlram r3\nmov {} r0\nsram r3\n", variable_ram_location, ram_location);
@@ -117,7 +117,7 @@ impl ExpressionGen {
                     let asm_calc_value = self.parse_large_expression(&block[i], ram, ram_identifier + 1, current_function, functions);
                     out.push_str(format!("{}mov {} r0\nlram r3\nmov {} r0\nlram r4\n{} r4 r3 r3\nsram r3\n", 
                         asm_calc_value,
-                        ram.get(&(ram_identifier + 1).to_string()).expect("Unreachable"),
+                        ram.get(&(ram_identifier + 1).to_string()).unwrap(),
                         ram_location,
                         operator
                     ).as_str());
@@ -194,7 +194,7 @@ impl ExpressionGen {
             2..=5 => self.parse_small_expression(expression, ram, 1, current_function, functions),
             _ => {
                 let mut out = self.parse_large_expression(expression, ram, 0, current_function, functions);
-                let value_ram_location = ram.get(&String::from("0")).expect("Unreachable").clone();
+                let value_ram_location = ram.get(&String::from("0")).unwrap().clone();
                 ram.free(&String::from("0"));
                 out.push_str(format!("mov {} r0\nlram r3\n", value_ram_location).as_str());
                 out

@@ -133,7 +133,7 @@ impl Gen {
         let mut out = format!("f{}:\n", identifier);
 
         self.current_function = identifier.clone();
-        for argument in self.functions.get(&self.current_function).expect("Unreachable") {
+        for argument in self.functions.get(&self.current_function).unwrap() {
             self.ram.allocate_next(&get_ram_identifier(&self.current_function, argument));
         }
 

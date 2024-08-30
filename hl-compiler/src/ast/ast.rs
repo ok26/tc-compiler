@@ -368,7 +368,7 @@ impl Ast {
             variable_declaration = Some(self.parse_variable_assignment(";", true));
             match &variable_declaration {
                 Some(Node { ty, row: _, column: _ }) => match ty {
-                    NodeType::Error(_) => return variable_declaration.expect("Unreachable"),
+                    NodeType::Error(_) => return variable_declaration.unwrap(),
                     _ => {}
                 },
                 _ => {}
@@ -411,7 +411,7 @@ impl Ast {
             loop_increment = Some(self.parse_variable_assignment(")", false));
             match &loop_increment {
                 Some(Node { ty, row: _, column: _ }) => match ty {
-                    NodeType::Error(_) => return loop_increment.expect("Unreachable"),
+                    NodeType::Error(_) => return loop_increment.unwrap(),
                     _ => {}
                 },
                 _ => {}
