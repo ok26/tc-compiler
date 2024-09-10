@@ -124,6 +124,9 @@ pub fn parse_expression(tokens: &Vec<Token>, i: &mut usize, terminators: Vec<&st
     let mut parenthesis_number = 0;
     let mut max_parenthesis_number = 0;
 
+    // Kept to remember row and column for Expression-block node, could throw error if lists are declared as: list[(x)] where x is a constant integer
+    let token = tokens[*i].clone();
+
     loop {
         let value = tokens[*i].clone();
         *i += 1;
@@ -295,8 +298,8 @@ pub fn parse_expression(tokens: &Vec<Token>, i: &mut usize, terminators: Vec<&st
 
     Ok(Expression {
         ty: ExpressionType::Block(compress_mul_blocks(expression_block)),
-        row: 0,
-        column: 0
+        row: token.row,
+        column: token.column
     })
 }
 
