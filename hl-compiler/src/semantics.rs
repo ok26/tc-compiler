@@ -7,6 +7,7 @@ pub enum SemanticsErrorType {
     UnwrappedCode,
     FunctionDefinitionInFunction,
     MissingMainFunction,
+    ListSizeHasToBeConstant,
     FunctionDefinedTwice(String),
     UninitializedVariable(String),
     UninitializedFunction(String),
@@ -38,14 +39,19 @@ impl SemanticAnalysis {
     fn analyse_for_loop(&mut self, variable_declaration: Option<Node>, condition: Expression, loop_increment: Option<Node>, body: Vec<Node>) {
 
         if let Some(var_decl) = variable_declaration { match var_decl.ty {
-            NodeType::VariableDeclaration { identifier, value } => self.analyse_variable_declaration(identifier, value),
+            NodeType::VariableDeclaration { identifier, offset, value } => self.analyse_variable_declaration(identifier, offset, value),
             _ => panic!("Unreachable")
         }}
 
         self.analyse_expression(condition);
 
         if let Some(loop_increment) = loop_increment { match loop_increment.ty {
-            NodeType::VariableAssignment { identifier: _, value } => self.analyse_expression(value),
+            NodeType::VariableAssignment { identifier: _, offset, value } => {
+                if let Some(offset) = offset {
+                    self.analyse_expression(offset);
+                }
+                self.analyse_expression(value);
+            }
             _ => panic!("Unreachable")
         }}
 
@@ -79,6 +85,15 @@ impl SemanticAnalysis {
                     });
                 }
             },
+            ExpressionType::List(identifier, _) => {
+                if !self.vars_in_scope.contains(&identifier) {
+                    self.errors.push(SemanticsError {
+                        ty: SemanticsErrorType::UninitializedVariable(identifier),
+                        row: expression.row,
+                        column: expression.column
+                    });
+                }
+            }
             ExpressionType::Function(identifier, arguments) => {
                 if let Some(expected_arguments) = self.functions.get(&identifier) {
                     if expected_arguments.len() != arguments.len() {
@@ -107,7 +122,7 @@ impl SemanticAnalysis {
         }
     }
     
-    fn analyse_variable_assignment(&mut self, identifier: String, value: Expression, row: usize, column: usize) {
+    fn analyse_variable_assignment(&mut self, identifier: String, offset: Option<Expression>, value: Expression, row: usize, column: usize) {
         if !self.vars_in_scope.contains(&identifier) {
             self.errors.push(SemanticsError {
                 ty: SemanticsErrorType::UninitializedVariable(identifier),
@@ -116,10 +131,35 @@ impl SemanticAnalysis {
             });
         }
 
+        if let Some(offset) = offset {
+            self.analyse_expression(offset);
+        }
+
         self.analyse_expression(value);
     }
     
-    fn analyse_variable_declaration(&mut self, identifier: String, value: Expression) {
+    fn analyse_variable_declaration(&mut self, identifier: String, offset: Option<Expression>, value: Expression) {
+        if let Some(offset) = offset {
+            match &offset.ty {
+                ExpressionType::Block(block) => {
+                    
+                    let is_error = match &block[0].ty {
+                        ExpressionType::Value(value) => !value.chars().nth(0).unwrap().is_numeric(),
+                        _ => true
+                    };
+
+                    if is_error {
+                        self.errors.push(SemanticsError {
+                            ty: SemanticsErrorType::ListSizeHasToBeConstant,
+                            row: offset.row,
+                            column: offset.column
+                        });
+                    }
+                },
+                _ => panic!("Unreachable")
+            }
+            self.analyse_expression(offset);
+        }
         self.analyse_expression(value);
         self.vars_in_scope.insert(identifier);
     }
@@ -140,8 +180,8 @@ impl SemanticAnalysis {
                 NodeType::IfElse { condition, body, else_body } => self.analyse_if(condition, body, Some(else_body)),
                 NodeType::Out { value } => self.analyse_expression(value),
                 NodeType::Return { value } => if let Some(value) = value { self.analyse_expression(value) },
-                NodeType::VariableAssignment { identifier, value } => self.analyse_variable_assignment(identifier, value, node.row, node.column),
-                NodeType::VariableDeclaration { identifier, value } => self.analyse_variable_declaration(identifier, value),
+                NodeType::VariableAssignment { identifier, offset, value } => self.analyse_variable_assignment(identifier, offset, value, node.row, node.column),
+                NodeType::VariableDeclaration { identifier, offset, value } => self.analyse_variable_declaration(identifier, offset, value),
                 NodeType::While { condition, body } => self.analyse_while_loop(condition, body),
                 NodeType::Function { .. } => self.errors.push(SemanticsError {
                     ty: SemanticsErrorType::FunctionDefinitionInFunction,
@@ -201,6 +241,7 @@ impl std::fmt::Display for SemanticsError {
 
         let out = match &self.ty {
             SemanticsErrorType::UnwrappedCode => "Unwrapped Code".to_string(),
+            SemanticsErrorType::ListSizeHasToBeConstant => "List size has to be constant".to_string(),
             SemanticsErrorType::FunctionDefinedTwice(identifier) => format!("Function: '{}' defined twice", identifier),
             SemanticsErrorType::FunctionDefinitionInFunction => "Function definitions are not allowed within funcitons".to_string(),
             SemanticsErrorType::UninitializedFunction(identifier) => format!("Uninitialized function: {}", identifier),

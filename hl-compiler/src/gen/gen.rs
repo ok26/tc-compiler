@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{ast::{ast::{Node, NodeType}, expressions::Expression}, utils::get_ram_identifier};
+use crate::{ast::{ast::{Node, NodeType}, expressions::{Expression, ExpressionType}}, utils::get_ram_identifier};
 use crate::gen::{ram::Ram, expressions::ExpressionGen};
 
 pub struct Gen {
@@ -17,7 +17,7 @@ impl Gen {
     pub fn new(ast: Vec<Node>, functions: HashMap<String, Vec<String>>) -> Gen {
         Gen {
             ast,
-            ram: Ram::new(4096),
+            ram: Ram::new(65536),
             expression_parser: ExpressionGen::new(),
             current_label: 0,
             current_function: String::new(),
@@ -26,8 +26,26 @@ impl Gen {
         }
     }
 
-    fn parse_variable_assignment(&mut self, identifier: &String, value: &Expression) -> String {
-        self.expression_parser.parse_expression(value, &mut self.ram, Some(identifier.clone()), &self.current_function, &self.functions)
+    fn parse_variable_assignment(&mut self, identifier: &String, offset: &Option<Expression>, value: &Expression) -> String {
+        self.expression_parser.parse_expression(value, offset.clone(), &mut self.ram, Some(identifier.clone()), &self.current_function, &self.functions)
+    }
+
+    fn parse_variable_declaration(&mut self, identifier: &String, offset: &Option<Expression>, value: &Expression) -> String {
+        if let Some(offset) = offset {
+            let list_size = if let ExpressionType::Block(block) = &offset.ty {
+                match &block[0].ty {
+                    ExpressionType::Value(value) => value.parse::<usize>().unwrap(),
+                    _ => panic!("Unreachable")
+                }
+            } else { panic!("Unreachable") };
+
+            self.ram.allocate_next(&get_ram_identifier(&self.current_function, &identifier), list_size);
+
+            String::new()
+        }
+        else {
+            self.parse_variable_assignment(identifier, offset, value)
+        }
     }
 
     fn parse_body(&mut self, body: &Vec<Node>, jump_to: String, jump_back: Option<String>) -> String {
@@ -45,7 +63,7 @@ impl Gen {
     }
 
     fn parse_if_statement(&mut self, condition: &Expression, body: &Vec<Node>, else_body: Option<&Vec<Node>>) -> String {
-        let expression_asm = self.expression_parser.parse_expression(condition, &mut self.ram, None, &self.current_function, &self.functions);
+        let expression_asm = self.expression_parser.parse_expression(condition, None, &mut self.ram, None, &self.current_function, &self.functions);
 
         let out: String;
         if let Some(else_body) = else_body {
@@ -81,7 +99,7 @@ impl Gen {
         let body_asm = self.parse_body(body, jump_to.to_string(), Some(jump_back.to_string()));
         self.asm.insert_str(0, body_asm.as_str());
         
-        let expression_asm = self.expression_parser.parse_expression(condition, &mut self.ram, None, &self.current_function, &self.functions);
+        let expression_asm = self.expression_parser.parse_expression(condition, None, &mut self.ram, None, &self.current_function, &self.functions);
         let out = format!("l{}:\n{}jt r3 l{}\n", 
             jump_back, 
             expression_asm,  
@@ -97,14 +115,14 @@ impl Gen {
         let variable_asm: String;
 
         if let Some(variable_assinment) = &**variable { match &variable_assinment.ty {
-            NodeType::VariableDeclaration { identifier, value } => variable_asm = self.parse_variable_assignment(identifier, value),
+            NodeType::VariableDeclaration { identifier, offset, value } => variable_asm = self.parse_variable_assignment(identifier, offset, value),
             _ => panic!("Unreachable")
         }}
         else { variable_asm = String::new(); }
 
         let mut body_asm = self.parse_body(body, jump_to.to_string(), Some(jump_back.to_string()));
         if let Some(loop_increment) = &**loop_increment { match &loop_increment.ty {
-            NodeType::VariableAssignment { identifier, value } => {
+            NodeType::VariableAssignment { identifier, offset, value } => {
 
                 let mut i = body_asm.len();
                 let mut chars = body_asm.chars().rev();
@@ -113,13 +131,13 @@ impl Gen {
                     i -= 1;
                     if c == '\n' { break; }
                 }
-                body_asm.insert_str(i, self.parse_variable_assignment(identifier, value).as_str());
+                body_asm.insert_str(i, self.parse_variable_assignment(identifier, offset, value).as_str());
             },
             _ => panic!("Unreachable")
         }}
         self.asm.insert_str(0, body_asm.as_str());
 
-        let expression_asm = self.expression_parser.parse_expression(condition, &mut self.ram, None, &self.current_function, &self.functions);
+        let expression_asm = self.expression_parser.parse_expression(condition, None, &mut self.ram, None, &self.current_function, &self.functions);
         let out = format!("{}l{}:\n{}jt r3 l{}\n",
             variable_asm,
             jump_back,
@@ -134,7 +152,7 @@ impl Gen {
 
         self.current_function = identifier.clone();
         for argument in self.functions.get(&self.current_function).unwrap() {
-            self.ram.allocate_next(&get_ram_identifier(&self.current_function, argument));
+            self.ram.allocate_next(&get_ram_identifier(&self.current_function, argument), 1);
         }
 
         for node in body {
@@ -151,22 +169,22 @@ impl Gen {
 
         let mut out = String::new();
         if let Some(value) = value {
-            out = self.expression_parser.parse_expression(value, &mut self.ram, Some("return".to_string()), &self.current_function, &self.functions);
+            out = self.expression_parser.parse_expression(value, None, &mut self.ram, Some("return".to_string()), &self.current_function, &self.functions);
         }
         out.push_str("ret\n");
         out
     }
 
     fn parse_out_call(&mut self, value: &Expression) -> String {
-        let expression_asm = self.expression_parser.parse_expression(value, &mut self.ram, None, &self.current_function, &self.functions);
+        let expression_asm = self.expression_parser.parse_expression(value, None, &mut self.ram, None, &self.current_function, &self.functions);
         format!("{}\nout r3\n", expression_asm)
     }
 
     fn parse_node(&mut self, node: &Node) -> String {
 
         return match &node.ty {
-            NodeType::VariableAssignment { identifier, value } => self.parse_variable_assignment(identifier, value),
-            NodeType::VariableDeclaration { identifier, value } => self.parse_variable_assignment(identifier, value),
+            NodeType::VariableAssignment { identifier, offset, value } => self.parse_variable_assignment(identifier, offset, value),
+            NodeType::VariableDeclaration { identifier, offset, value } => self.parse_variable_declaration(identifier, offset, value),
             NodeType::If { condition, body } => self.parse_if_statement(condition, body, None),
             NodeType::IfElse { condition, body, else_body } => self.parse_if_statement(condition, body, Some(else_body)),
             NodeType::While { condition, body } => self.parse_while_loop(condition, body),

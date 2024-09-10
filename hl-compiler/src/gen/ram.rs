@@ -33,14 +33,16 @@ impl Ram {
         local_variables
     }
 
-    pub fn allocate_next(&mut self, variable: &String) -> usize {
+    pub fn allocate_next(&mut self, variable: &String, size: usize) -> usize {
         if let Some(location) = self.get(variable) { return *location; }
 
-        let start_idx = if variable.chars().nth(0).unwrap().is_numeric() { self.size / 4 } else { 0 };
+        let start_idx = if variable.chars().nth(0).unwrap().is_numeric() { self.size - 1024 } else { 0 };
         for i in start_idx..self.allocated_memory.len() {
             if !self.allocated_memory[i] {
-                self.allocated_memory[i] = true;
                 self.variables.insert(variable.clone(), i);
+                for offset in 0..size {
+                    self.allocated_memory[i + offset] = true;
+                }
                 return i;
             }
         }
@@ -48,9 +50,11 @@ impl Ram {
         return 0;
     }
 
-    pub fn free(&mut self, variable: &String) -> bool {
+    pub fn free(&mut self, variable: &String, size: usize) -> bool {
         if let Some(memory_location) = self.variables.remove(variable) {
-            self.allocated_memory[memory_location] = false;
+            for offset in 0..size {
+                self.allocated_memory[memory_location + offset] = false;
+            }
             return true;
         }
         return false;

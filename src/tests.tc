@@ -74,4 +74,28 @@ fn main() {
 
     let test3 = (31 & 1015) << (8 | 24);
     out(test3); // 385875968
+
+
+    // Lists
+    let list[100];
+    out(list[10]); // Unknown value
+
+    for (let i = 1; i <= 100; i = i + 1) {
+        list[i - 1] = i * i;
+    }
+
+    for (let i = 0; i < 100; i = i + 1) {
+        out(list[i]);
+    }
+
+    // Fibonacci implementation with list
+    let fib_sequence[40];
+    fib_sequence[1] = 1;
+    for (let i = 2; i < 40; i = i + 1) {
+        fib_sequence[i] = fib_sequence[i - 1] + fib_sequence[i - 2];
+    }
+
+    for (let i = 0; i < 40; i = i + 1) {
+        out(fib_sequence[i]);
+    }
 }

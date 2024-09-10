@@ -7,6 +7,7 @@ use super::{ast::{Node, NodeType}, errors::AstErrorType};
 #[derive(Clone)]
 pub enum ExpressionType {
     Value(String),
+    List(String, Box<Expression>),
     Function(String, Vec<Expression>),
     Operator(String),
     ParenthesisOpen(usize),
@@ -173,6 +174,22 @@ pub fn parse_expression(tokens: &Vec<Token>, i: &mut usize, terminators: Vec<&st
                 Err(error) => return Err(error)
             }
         }
+        // List
+        else if operator.raw == "[" {
+
+            let offset = match parse_expression(tokens, i, vec!["]"]) {
+                Ok(offset) => offset,
+                Err(error) => return Err(error),
+            };
+
+            expression_block.push(Expression {
+                ty: ExpressionType::List(value.raw, Box::new(offset)),
+                row: value.row,
+                column: value.column
+            });
+            operator = tokens[*i].clone();
+            *i += 1;
+        }
         else {
             expression_block.push(Expression {
                 ty: ExpressionType::Value(value.raw),
@@ -286,6 +303,7 @@ pub fn parse_expression(tokens: &Vec<Token>, i: &mut usize, terminators: Vec<&st
 fn convert_expression_to_string(expression: &Expression) -> String {
     return match &expression.ty {
         ExpressionType::Value(value) => format!("{} ", value.clone()),
+        ExpressionType::List(identifier, offset) => format!("{}[{}] ", identifier, offset),
         ExpressionType::Function(identifier, arguments) => {
 
             let mut out = format!("{}(", identifier);

@@ -1,6 +1,6 @@
 pub struct Emulator {
     reg: [u32; 6],
-    ram: [u32; 4096],
+    ram: [u32; 65536],
     stack: Vec<u32>
 }
 
@@ -8,7 +8,7 @@ impl Emulator {
     pub fn new() -> Emulator {
         Emulator {
             reg: [0; 6],
-            ram: [0; 4096],
+            ram: [0; 65536],
             stack: vec![]
         }
     }

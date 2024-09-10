@@ -12,7 +12,7 @@ pub enum AstErrorType {
     SyntaxError,
     UnevenParenthesis,
     ExpectedExpression,
-    ExpectedEndOfLine
+    ExpectedEndOfLine,
 }
 
 impl std::fmt::Display for AstErrorType {
@@ -30,7 +30,7 @@ impl std::fmt::Display for AstErrorType {
             AstErrorType::SyntaxError => "Syntax Error",
             AstErrorType::UnevenParenthesis => "Uneven Parenthesis",
             AstErrorType::ExpectedExpression => "Expected Expression",
-            AstErrorType::ExpectedEndOfLine => "Expected End of Line"
+            AstErrorType::ExpectedEndOfLine => "Expected End of Line",
         };
         write!(f, "{}", out)
     }

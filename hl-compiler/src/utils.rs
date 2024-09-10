@@ -15,7 +15,8 @@ pub fn is_int_operator(operator: &String) -> bool {
 pub fn get_ram_identifier(current_function: &String, identifier: &String) -> String {
     if *identifier == String::from("return") {
         identifier.clone()
-    } else {
+    } 
+    else {
         format!("{}:{}", current_function, identifier)
     }
 }

@@ -1,6 +1,6 @@
 use crate::{lexer::{PunctuationKind, Token, TokenType}, utils::is_reserved_keyword};
 
-use super::{errors::AstErrorType, expressions::{parse_boolean_expression, parse_expression, Expression}};
+use super::{errors::AstErrorType, expressions::{parse_boolean_expression, parse_expression, Expression, ExpressionType}};
 
 #[derive(Clone)]
 pub enum NodeType {
@@ -25,10 +25,12 @@ pub enum NodeType {
     },
     VariableAssignment {
         identifier: String,
+        offset: Option<Expression>,                      // Memory offset for lists
         value: Expression,
     },
     VariableDeclaration {
         identifier: String,
+        offset: Option<Expression>,                      // Memory offset for lists
         value: Expression
     },
     Function {
@@ -92,8 +94,48 @@ impl Ast {
         }
 
         let identifier = token.raw.clone();
-        let token = self.tokens[self.i].clone();
+        let mut token = self.tokens[self.i].clone();
         self.i += 1;
+
+        let mut offset: Option<Expression> = None;
+
+        // List
+        if token.raw == "[" {
+
+            offset = match parse_expression(&self.tokens, &mut self.i, vec!["]"]) {
+                Ok(value) => Some(value),
+                Err(error) => return error
+            };
+
+            if is_declaration {
+                let token = self.tokens[self.i].clone();
+                self.i += 1;
+                if token.raw != ";" {
+                    return Node {
+                        ty: NodeType::Error(AstErrorType::ExpectedEndOfLine),
+                        row: token.row,
+                        column: token.column
+                    }
+                }
+
+                return Node {
+                    ty: NodeType::VariableDeclaration {
+                        identifier,
+                        offset,
+                        value: Expression {
+                            ty: ExpressionType::Block(vec![]),
+                            row: 0,
+                            column: 0
+                        }
+                    },
+                    row: 0,
+                    column: 0
+                }
+            }
+
+            token = self.tokens[self.i].clone();
+            self.i += 1;
+        }
         
         if token.raw != String::from("=") {
             return Node {
@@ -112,6 +154,7 @@ impl Ast {
             return Node {
                 ty: NodeType::VariableDeclaration {
                     identifier,
+                    offset,
                     value
                 },
                 row: token.row,
@@ -122,6 +165,7 @@ impl Ast {
             return Node {
                 ty: NodeType::VariableAssignment {
                     identifier,
+                    offset,
                     value
                 },
                 row: token.row,
@@ -517,8 +561,8 @@ impl Ast {
 
 fn convert_node_to_string(node: &Node, inc: usize) -> String {
     return match &node.ty {
-        NodeType::VariableAssignment { identifier, value } => format!("{}Variable assignment: {} = {}\n", "\t".to_string().repeat(inc), identifier, value),
-        NodeType::VariableDeclaration { identifier, value } => format!("{}Variable assignment: {} = {}\n", "\t".to_string().repeat(inc), identifier, value),
+        NodeType::VariableAssignment { identifier, offset: _, value } => format!("{}Variable assignment: {} = {}\n", "\t".to_string().repeat(inc), identifier, value),
+        NodeType::VariableDeclaration { identifier, offset: _, value } => format!("{}Variable assignment: {} = {}\n", "\t".to_string().repeat(inc), identifier, value),
         NodeType::Error(ty) => format!("{}Error: {} on line {}, column: {}", "\t".to_string().repeat(inc), ty, node.row, node.column),
         NodeType::Return { value } => {
             if let Some(value) = value { format!("{}Return {}\n", "\t".to_string().repeat(inc), value) }
