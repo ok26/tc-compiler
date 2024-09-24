@@ -9,6 +9,3 @@ fn main() {
     let mut emulator = Emulator::new();
     emulator.run_script(machine_instructions);
 }
-
-// No optimization: 1818 instructions
-// With: 804 instructions

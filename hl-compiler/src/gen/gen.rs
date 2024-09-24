@@ -180,6 +180,10 @@ impl Gen {
         format!("{}\nout r3\n", expression_asm)
     }
 
+    fn parse_asm_call(&mut self, asm_code: &String) -> String {
+        asm_code.clone()
+    }
+
     fn parse_node(&mut self, node: &Node) -> String {
 
         return match &node.ty {
@@ -192,6 +196,7 @@ impl Gen {
             NodeType::Function { identifier, arguments: _, body } => self.parse_function_definition(identifier, body),
             NodeType::Return { value } => self.parse_return(value),
             NodeType::Out { value } => self.parse_out_call(value),
+            NodeType::Asm { asm_code } => self.parse_asm_call(asm_code),
             NodeType::Error { .. } => panic!("Unreachable")
         }
     }

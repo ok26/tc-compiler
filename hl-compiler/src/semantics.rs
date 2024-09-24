@@ -188,6 +188,7 @@ impl SemanticAnalysis {
                     row: node.row,
                     column: node.column
                 }),
+                NodeType::Asm { .. } => {},
                 NodeType::Error { .. } => panic!("Unreachable")
             };
         }

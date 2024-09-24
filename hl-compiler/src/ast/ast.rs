@@ -44,6 +44,9 @@ pub enum NodeType {
     Out {
         value: Expression
     },
+    Asm {
+        asm_code: String            // Unsafe to use, does not check asm-code and immediately replaces the asm-call with the asm-code
+    },
     Error (AstErrorType)
 }
 
@@ -522,6 +525,52 @@ impl Ast {
         return node;
     }
 
+    fn parse_asm_keyword(&mut self) -> Node {
+        let token = self.tokens[self.i].clone();
+        self.i += 1;
+
+        if let TokenType::Punctuation(PunctuationKind::Open(open_nmr)) = token.ty {
+            if token.raw == "(" {
+                
+                let mut asm_code = String::new();
+                loop {
+                    let token = self.tokens[self.i].clone();
+                    self.i += 1;
+
+                    if let TokenType::Punctuation(PunctuationKind::Close(close_nmr)) = token.ty {
+                        if token.raw == ")" && open_nmr == close_nmr {
+
+                            let token = self.tokens[self.i].clone();
+                            self.i += 1;
+                            
+                            if token.raw != ";" { return Node {
+                                ty: NodeType::Error(AstErrorType::ExpectedEndOfLine),
+                                row: token.row,
+                                column: token.column
+                            }}
+
+                            asm_code.push('\n');
+                            return Node {
+                                ty: NodeType::Asm { asm_code },
+                                row: 0,
+                                column: 0
+                            }
+                        }
+                    }
+
+                    if token.raw == "," { asm_code.push('\n'); }
+                    else { asm_code.push_str(format!("{} ", token.raw).as_str()); }
+                }
+            }
+        }
+
+        return Node {
+            ty: NodeType::Error(AstErrorType::ExpectedParenthesis),
+            row: token.row,
+            column: token.column
+        };
+    }
+
     pub fn parse_line(&mut self) -> Option<Node> {
         
         let token = &self.tokens[self.i.min(self.tokens.len() - 1)];
@@ -544,6 +593,7 @@ impl Ast {
             "while" => self.parse_while_loop(), 
             "return" => self.parse_return_keyword(), 
             "out" => self.parse_out_keyword(),
+            "asm" => self.parse_asm_keyword(),
             _ => {
                 self.i -= 1;
                 self.parse_variable_assignment(";", false)
@@ -563,6 +613,7 @@ fn convert_node_to_string(node: &Node, inc: usize) -> String {
     return match &node.ty {
         NodeType::VariableAssignment { identifier, offset: _, value } => format!("{}Variable assignment: {} = {}\n", "\t".to_string().repeat(inc), identifier, value),
         NodeType::VariableDeclaration { identifier, offset: _, value } => format!("{}Variable assignment: {} = {}\n", "\t".to_string().repeat(inc), identifier, value),
+        NodeType::Asm { asm_code } => format!("{}Asm-code: {}", "\t".to_string().repeat(inc), asm_code),
         NodeType::Error(ty) => format!("{}Error: {} on line {}, column: {}", "\t".to_string().repeat(inc), ty, node.row, node.column),
         NodeType::Return { value } => {
             if let Some(value) = value { format!("{}Return {}\n", "\t".to_string().repeat(inc), value) }

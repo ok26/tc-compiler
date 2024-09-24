@@ -24,7 +24,7 @@ fn find_ast_errors(nodes: Vec<Node>) -> Vec<Node> {
                 out
             },
             NodeType::While { condition: _, body } => find_ast_errors(body),
-            NodeType::Out { .. } | NodeType::Return { .. } | NodeType::VariableAssignment { .. } | NodeType::VariableDeclaration { .. } => vec![],
+            NodeType::Out { .. } | NodeType::Return { .. } | NodeType::VariableAssignment { .. } | NodeType::VariableDeclaration { .. } | NodeType::Asm { .. } => vec![],
             NodeType::Error { .. } => vec![node]
         });
     }

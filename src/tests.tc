@@ -75,7 +75,6 @@ fn main() {
     let test3 = (31 & 1015) << (8 | 24);
     out(test3); // 385875968
 
-
     // Lists
     let list[100];
     out(list[10]); // Unknown value
@@ -98,4 +97,10 @@ fn main() {
     for (let i = 0; i < 40; i = i + 1) {
         out(fib_sequence[i]);
     }
+
+    // Asm-code in hl-code example
+    asm ( mov 10 r0, out r0, hlt );
+
+    // Will never be reached
+    out(123456);
 }
