@@ -4,7 +4,7 @@ use crate::{lexer::{Token, TokenType}, utils::is_int_operator};
 
 use super::{ast::{Node, NodeType}, errors::AstErrorType};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum ExpressionType {
     Value(String),
     List(String, Box<Expression>),
@@ -15,7 +15,7 @@ pub enum ExpressionType {
     Block(Vec<Expression>)
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Expression {
     pub ty: ExpressionType,
     pub row: usize,

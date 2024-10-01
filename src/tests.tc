@@ -12,7 +12,6 @@ fn sqrt(low, high, n) {
         return high;
     }
 
-    // Division is not supported
     let mid = (low + high) / 2;
 
     if (mid * mid == n) {
