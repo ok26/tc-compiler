@@ -13,7 +13,7 @@ fn sqrt(low, high, n) {
     }
 
     // Division is not supported
-    let mid = (low + high) >> 2;
+    let mid = (low + high) / 2;
 
     if (mid * mid == n) {
         return mid;
@@ -72,8 +72,8 @@ fn main() {
     let test2 = (test1 - fib(6) + fib( (3 * 10 + 2 * fib(5)) >> 2 ) * 12) >> 3;
     out(test2); // 35
 
-    let test3 = (31 & 1015) << (8 | 24);
-    out(test3); // 385875968
+    let test3 = (2 + 4 / 2 * 8 + 2) << (8 | 24);
+    out(test3); // 335544320
 
     // Lists
     let list[100];
@@ -99,7 +99,7 @@ fn main() {
     }
 
     // Asm-code in hl-code example
-    asm ( mov 10 r0, out r0, hlt );
+    asm ( mov 10 r0, mov 6 r1, or r0 r1 r0, out r0, hlt );
 
     // Will never be reached
     out(123456);

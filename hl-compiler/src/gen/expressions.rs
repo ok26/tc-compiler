@@ -16,6 +16,7 @@ impl ExpressionGen {
             "+" => "add",
             "-" => "sub",
             "*" => "mul",
+            "/" => "div",
             "&" => "and",
             "|" => "or",
             "^" => "xor",

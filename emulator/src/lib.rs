@@ -124,6 +124,7 @@ impl Emulator {
                     6 => arg1 << arg2,
                     7 => arg1 >> arg2,
                     8 => arg1.wrapping_mul(arg2),
+                    9 => arg1 / arg2,
                     _ => panic!("Unreachable")
                 };
 

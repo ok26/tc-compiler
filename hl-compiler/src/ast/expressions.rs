@@ -4,7 +4,7 @@ use crate::{lexer::{Token, TokenType}, utils::is_int_operator};
 
 use super::{ast::{Node, NodeType}, errors::AstErrorType};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ExpressionType {
     Value(String),
     List(String, Box<Expression>),
@@ -15,7 +15,7 @@ pub enum ExpressionType {
     Block(Vec<Expression>)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Expression {
     pub ty: ExpressionType,
     pub row: usize,
@@ -60,8 +60,7 @@ pub fn parse_boolean_expression(tokens: &Vec<Token>, i: &mut usize, terminator: 
     }
 }
 
-// Only multiplication so far
-fn compress_mul_blocks(expression_block: Vec<Expression>) -> Vec<Expression> {
+fn compress_blocks(expression_block: Vec<Expression>, operators: Vec<&str>) -> Vec<Expression> {
     let mut new_block: Vec<Expression> = vec![];
     let mut i = 0;
     while i < expression_block.len() {
@@ -70,7 +69,7 @@ fn compress_mul_blocks(expression_block: Vec<Expression>) -> Vec<Expression> {
         match &expression.ty {
             ExpressionType::Operator(raw) => {
 
-                if raw != "*" {
+                if !operators.contains(&raw.as_str()) {
                     new_block.push(expression.clone());
                     i += 1;
                     continue;
@@ -92,7 +91,7 @@ fn compress_mul_blocks(expression_block: Vec<Expression>) -> Vec<Expression> {
                     }
     
                     let expression = &expression_block[i];
-                    if let ExpressionType::Operator(raw) = &expression.ty { if raw != "*" { 
+                    if let ExpressionType::Operator(raw) = &expression.ty { if !operators.contains(&raw.as_str()) { 
                         new_block.push(Expression {
                             ty: ExpressionType::Block(compressed_block),
                             row: 0,
@@ -105,9 +104,10 @@ fn compress_mul_blocks(expression_block: Vec<Expression>) -> Vec<Expression> {
                     i += 1;
                 }
             },
+            
             ExpressionType::Block(block) => {
                 new_block.push(Expression {
-                    ty: ExpressionType::Block(compress_mul_blocks(block.clone())),
+                    ty: ExpressionType::Block(compress_blocks(block.clone(), operators.clone())),
                     row: 0,
                     column: 0
                 });
@@ -297,7 +297,7 @@ pub fn parse_expression(tokens: &Vec<Token>, i: &mut usize, terminators: Vec<&st
     }
 
     Ok(Expression {
-        ty: ExpressionType::Block(compress_mul_blocks(expression_block)),
+        ty: ExpressionType::Block(compress_blocks(expression_block, vec!["*", "/"])),
         row: token.row,
         column: token.column
     })

@@ -72,7 +72,7 @@ pub fn gen_instructions(tokens: Vec<Token>) -> Vec<u32> {
 
             TokenType::Add | TokenType::Sub | TokenType::Mul | TokenType::And | TokenType::Or | TokenType::Xor | TokenType::Shl | TokenType::Shr |
             TokenType::Eq | TokenType::NotEq | TokenType::Less | TokenType::LessEq | TokenType::Greater | TokenType::GreaterEq |
-            TokenType::Jeq | TokenType::Jneq | TokenType::Jl | TokenType::Jg | TokenType::Jge | TokenType::Jle=> {
+            TokenType::Jeq | TokenType::Jneq | TokenType::Jl | TokenType::Jg | TokenType::Jge | TokenType::Jle | TokenType::Div => {
 
                 if i + 3 >= tokens.len() { panic!("Incorrect arguments on line: {}, column: {}", token.row, token.column) }
                 
@@ -85,6 +85,7 @@ pub fn gen_instructions(tokens: Vec<Token>) -> Vec<u32> {
                     TokenType::Shl => 6,
                     TokenType::Shr => 7,
                     TokenType::Mul => 8,
+                    TokenType::Div => 9,
                     TokenType::Eq | TokenType::Jeq => 1 << 8,
                     TokenType::NotEq | TokenType::Jneq => (1 << 8) + 1,
                     TokenType::Less | TokenType::Jl => (1 << 8) + 2,
