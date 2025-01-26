@@ -208,6 +208,14 @@ impl Ast {
             };
         }
 
+        if is_reserved_keyword(&token.raw) {
+            return Node {
+                ty: NodeType::Error(AstErrorType::ReservedKeyword),
+                row: token.row,
+                column: token.column
+            };
+        }
+
         let seperator = self.tokens[self.i].clone();
         self.i += 1;
         if seperator.raw != "(" {
