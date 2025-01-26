@@ -27,6 +27,8 @@ fn sqrt(low, high, n) {
 
 fn main() {
 
+
+
     // Recursive tests
     let recursive_fib = fib(20);
     out(recursive_fib); // 6765
@@ -34,7 +36,8 @@ fn main() {
     let sqrt_result = sqrt(0, 37651, 37651);
     out(sqrt_result); // 194
 
-    
+
+
     // Loop tests
     let sum = 0;
     for (let i = 0; i < 3; i = i + 1) {
@@ -64,6 +67,7 @@ fn main() {
     out(sum); // 131071
 
 
+
     // Expression tests
     let test1 = 30 - (20 + 2) * 18;
     out(test1); // -366
@@ -73,6 +77,8 @@ fn main() {
 
     let test3 = (2 + 4 / 2 * 8 + 2) << (8 | 24);
     out(test3); // 335544320
+
+
 
     // Lists
     let list[100];
@@ -86,6 +92,8 @@ fn main() {
         out(list[i]);
     }
 
+
+
     // Fibonacci implementation with list
     let fib_sequence[40];
     fib_sequence[1] = 1;
@@ -97,9 +105,34 @@ fn main() {
         out(fib_sequence[i]);
     }
 
+
+
+    // Sieve of Eratosthenes
+    let primes[101];
+    for (let i = 0; i <= 100; i = i + 1) {
+        primes[i] = 1;
+    }
+
+    primes[0] = 0;
+    primes[1] = 0;
+
+    for (let i = 2; i * i <= 100; i = i + 1) {
+        for (let j = i * i; j <= 100; j = j + i) {
+            primes[j] = 0;
+        }
+    }
+
+    for (let i = 0; i <= 100; i = i + 1) {
+        if (primes[i] == 1) {
+            out(i);
+        }
+    }
+
+
+
     // Asm-code in hl-code example
     asm ( mov 10 r0, mov 6 r1, or r0 r1 r0, out r0, hlt );
 
-    // Will never be reached
+    // Will never be reached because of halt instruction
     out(123456);
 }
